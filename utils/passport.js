@@ -22,24 +22,26 @@ passport.use(
       passReqToCallback: true,
     },
     async function (request, accessToken, refreshToken, profile, done) {
-      const exist = await User.findOne({ email: profile["emails"][0].value });
+      const firstName = profile.name.givenName;
+      const lastName = profile.name.familyName;
+      const email = profile.emails[0].value;
+
+      const exist = await User.findOne({ email });
       if (!exist) {
         await User.create({
-          email: profile["emails"][0].value,
-          fullName: profile["displayName"],
-          avatar: profile["photos"][0].value,
-          username: profile["name"]["givenName"],
-          password: await hashPassword(profile["id"]),
+          email,
+          fullName: `${firstName} ${lastName}`,
+          avatar: profile.photos[0].value,
+          username: firstName, // You can set the username to the first name if needed
+          password: await hashPassword(profile.id),
           verified: true,
         });
       }
-      const user = await User.findOne({ email: profile["emails"][0].value });
-      var token = user.createJWT();
-      await User.findOneAndUpdate(
-        { email: profile["emails"][0].value },
-        { token: token },
-        { runValidators: true, new: true }
-      );
+
+      const user = await User.findOne({ email });
+      const token = user.createJWT();
+
+      await User.findOneAndUpdate({ email }, { token }, { runValidators: true, new: true });
 
       return done(null, user);
     }

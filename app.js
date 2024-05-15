@@ -16,6 +16,7 @@ import errorHandlerMiddleware from "./middleware/error-handler.js";
 import notFoundMiddleware from "./middleware/not-found.js";
 
 //import route
+import userRouter from "./routes/user.js";
 
 
 const app = express();
@@ -51,6 +52,8 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use("/", userRouter);
 
 
 app.use(notFoundMiddleware);

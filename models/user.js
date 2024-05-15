@@ -5,9 +5,13 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    fullName: {
+    firstName: {
       type: String,
-      required: [true, "Please provide full name"],
+      required: [true, "Please provide first name"],
+    },
+    lastName: {
+      type: String,
+      required: [true, "Please provide last name"],
     },
     avatar: {
       type: String,
@@ -74,7 +78,7 @@ userSchema.pre("save", async function () {
 });
 
 userSchema.methods.createJWT = function () {
-  const token = jwt.sign({ userId: this._id, fullName: this.fullName }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ userId: this._id, firstName: this.firstName, lastName: this.lastName }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_LIFETIME,
   });
   this.token = token;

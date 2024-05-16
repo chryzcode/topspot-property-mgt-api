@@ -3,8 +3,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-
-
 const allowedCategories = ["plumbing", "painting", "furniture assembly", "electrical work", "room cleaning", "other"];
 
 
@@ -76,11 +74,6 @@ const userSchema = new mongoose.Schema(
     yearsOfExperience: {
       type: Number,
       required: [true, "Please provide years of experience"],
-    },
-
-    dateAvailable: {
-      type: Date,
-      required: [true, "Please provide date"],
     },
 
     password: {

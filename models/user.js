@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
+
+
+const allowedCategories = ["plumbing", "painting", "furniture assembly", "electrical work", "room cleaning", "other"];
+
+
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -41,16 +46,41 @@ const userSchema = new mongoose.Schema(
       ],
     },
 
-    Country: {
+    userType: {
+      type: String,
+      enum: ["houseOwner", "serviceProvider"],
+    },
+
+    country: {
       type: String,
     },
 
-    State: {
+    state: {
       type: String,
     },
 
-    City: {
+    postalCode: {
       type: String,
+    },
+
+    categories: {
+      type: [
+        {
+          type: String,
+          enum: allowedCategories, // Only allow specific categories
+        },
+      ],
+      required: [true, "Please provide date"],
+    },
+
+    yearsOfExperience: {
+      type: Number,
+      required: [true, "Please provide years of experience"],
+    },
+
+    dateAvailable: {
+      type: Date,
+      required: [true, "Please provide date"],
     },
 
     password: {

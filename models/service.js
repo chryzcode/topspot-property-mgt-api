@@ -47,6 +47,10 @@ const serviceSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Please provide amount"],
     },
+    paid: {
+      type: Boolean,
+      default: false,
+    },
     availableFromDate: {
       type: Date,
       required: [true, '"Please provide available from date'],

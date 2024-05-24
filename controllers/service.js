@@ -4,50 +4,109 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 
 export const userServices = async (req, res) => {
   const { userId } = req.user;
-  const services = await Service.find({ user: userId }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  const { date, status, page, limit } = req.query;
 
-export const userOngoingServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "ongoing" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  let query = { user: userId };
 
-export const userPendingServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "pending" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  if (date) {
+    const parsedDate = new Date(date);
+    if (!isNaN(parsedDate.getTime())) {
+      query.availableFromDate = { $lte: parsedDate };
+      query.availableToDate = { $gte: parsedDate };
+    } else {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
+    }
+  }
 
-export const userCompletedServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "completed" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  if (status) {
+    query.status = status;
+  }
 
-export const userCancelledServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "cancelled" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
-
-export const filterUserServicesMonthly = async (req, res) => {
-  const { userId } = req.user;
-  const now = new Date();
-
-  // Get the first and last day of the current month
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const pageNumber = parseInt(page) || 0;
+  const pageSize = parseInt(limit) || 10;
 
   try {
-    const services = await Service.find({
-      user: userId,
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-    }).sort({ createdAt: -1 });
+    const services = await Service.find(query)
+      .sort({ createdAt: -1 })
+      .skip(pageNumber * pageSize)
+      .limit(pageSize);
+    res.status(StatusCodes.OK).json({ services });
+  } catch (error) {
+    console.error("Error fetching user services:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
+  }
+};
+
+export const cancelService = async (req, res) => {
+  const { serviceId } = req.params;
+  const { userId } = req.user;
+
+  let service = await Service.findOne({ _id: serviceId, user: userId });
+  if (!service) {
+    throw new NotFoundError(`Service does not exist`);
+  }
+
+  service = await Service.findOneAndUpdate(
+    { _id: serviceId, user: userId },
+    { status: "cancelled" },
+    { runValidators: true, new: true }
+  );
+  res.status(StatusCodes.OK).json({ service });
+};
+
+export const searchServices = async (req, res) => {
+  let { category, location, date, priceMin, priceMax, page, limit } = req.query;
+
+  // Convert search parameters to lowercase and parse as needed
+  category = category ? category.toLowerCase() : null;
+  location = location ? location.toLowerCase() : null;
+  date = date ? new Date(date) : null;
+  priceMin = priceMin ? parseFloat(priceMin) : null;
+  priceMax = priceMax ? parseFloat(priceMax) : null;
+  page = parseInt(page) || 0;
+  limit = parseInt(limit) || 10;
+
+  try {
+    let query = {};
+
+    // Add search conditions based on provided parameters
+    if (category) {
+      query.categories = { $regex: new RegExp(category, "i") };
+    }
+
+    if (location) {
+      // Split location into words and search for each word in the location field
+      const locationWords = location.split(" ");
+      query.location = {
+        $regex: new RegExp(locationWords.join("|"), "i"),
+      };
+    }
+
+    if (date) {
+      if (!isNaN(date.getTime())) {
+        query.$or = [{ availableFromDate: { $gte: date } }, { availableToDate: { $gte: date } }];
+      } else {
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
+      }
+    }
+
+    if (priceMin !== null && priceMax !== null) {
+      query.amount = { $gte: priceMin, $lte: priceMax };
+    } else if (priceMin !== null) {
+      query.amount = { $gte: priceMin };
+    } else if (priceMax !== null) {
+      query.amount = { $lte: priceMax };
+    }
+
+    // Execute the query with pagination
+    const services = await Service.find(query)
+      .sort({ createdAt: -1 })
+      .skip(page * limit)
+      .limit(limit);
 
     res.status(StatusCodes.OK).json({ services });
   } catch (error) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
+    console.error("Error searching services:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
   }
 };

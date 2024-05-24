@@ -8,6 +8,11 @@ const serviceSchema = new mongoose.Schema(
       ref: "User",
     },
 
+    location: {
+      type: String,
+      required: [true, "Please provide location"],
+    },
+
     contractor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -54,6 +59,10 @@ const serviceSchema = new mongoose.Schema(
     availableFromDate: {
       type: Date,
       required: [true, '"Please provide available from date'],
+    },
+    availableToDate: {
+      type: Date,
+      required: [true, '"Please provide available to date'],
     },
     availableFromTime: {
       type: String,

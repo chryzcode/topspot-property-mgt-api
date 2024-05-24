@@ -5,7 +5,8 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 
 export const getServiceQuotes = async (req, res) => {
   const { serviceId } = req.params;
-  const service = await Service.findOne({ _id: serviceId });
+  const { userId } = req.user;
+  const service = await Service.findOne({ _id: serviceId, user: userId });
   if (!service) {
     throw new NotFoundError(`Service does not exist`);
   }

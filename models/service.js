@@ -9,7 +9,7 @@ const serviceSchema = new mongoose.Schema(
     },
 
     location: {
-      type: String, 
+      type: String,
       required: [true, "Please provide location"],
     },
 
@@ -59,6 +59,10 @@ const serviceSchema = new mongoose.Schema(
     availableFromDate: {
       type: Date,
       required: [true, '"Please provide available from date'],
+    },
+    availableToDate: {
+      type: Date,
+      required: [true, '"Please provide available to date'],
     },
     availableFromTime: {
       type: String,

@@ -4,32 +4,37 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 
 export const userServices = async (req, res) => {
   const { userId } = req.user;
-  const services = await Service.find({ user: userId }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  const { date, status, page, limit } = req.query;
 
-export const userOngoingServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "ongoing" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  let query = { user: userId };
 
-export const userPendingServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "pending" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  if (date) {
+    const parsedDate = new Date(date);
+    if (!isNaN(parsedDate.getTime())) {
+      query.availableFromDate = { $lte: parsedDate };
+      query.availableToDate = { $gte: parsedDate };
+    } else {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
+    }
+  }
 
-export const userCompletedServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "completed" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
-};
+  if (status) {
+    query.status = status;
+  }
 
-export const userCancelledServices = async (req, res) => {
-  const { userId } = req.user;
-  const services = await Service.find({ user: userId, status: "cancelled" }).sort({ createdAt: -1 });
-  res.status(StatusCodes.OK).json({ services });
+  const pageNumber = parseInt(page) || 0;
+  const pageSize = parseInt(limit) || 10;
+
+  try {
+    const services = await Service.find(query)
+      .sort({ createdAt: -1 })
+      .skip(pageNumber * pageSize)
+      .limit(pageSize);
+    res.status(StatusCodes.OK).json({ services });
+  } catch (error) {
+    console.error("Error fetching user services:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
+  }
 };
 
 export const cancelService = async (req, res) => {
@@ -48,7 +53,6 @@ export const cancelService = async (req, res) => {
   );
   res.status(StatusCodes.OK).json({ service });
 };
-
 
 export const searchServices = async (req, res) => {
   let { category, location, date, priceMin, priceMax, page, limit } = req.query;
@@ -80,7 +84,7 @@ export const searchServices = async (req, res) => {
 
     if (date) {
       if (!isNaN(date.getTime())) {
-        query.availableFromDate = { $gte: date };
+        query.$or = [{ availableFromDate: { $gte: date } }, { availableToDate: { $gte: date } }];
       } else {
         return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
       }

@@ -41,4 +41,3 @@ export const approveQuote = async (req, res) => {
   res.status(StatusCodes.OK).json({ quote, service });
 };
 
-

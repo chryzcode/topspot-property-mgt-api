@@ -32,22 +32,3 @@ export const userCancelledServices = async (req, res) => {
   res.status(StatusCodes.OK).json({ services });
 };
 
-export const filterUserServicesMonthly = async (req, res) => {
-  const { userId } = req.user;
-  const now = new Date();
-
-  // Get the first and last day of the current month
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-  try {
-    const services = await Service.find({
-      user: userId,
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-    }).sort({ createdAt: -1 });
-
-    res.status(StatusCodes.OK).json({ services });
-  } catch (error) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
-  }
-};

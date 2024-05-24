@@ -8,6 +8,11 @@ const serviceSchema = new mongoose.Schema(
       ref: "User",
     },
 
+    location: {
+      type: String, 
+      required: [true, "Please provide location"],
+    },
+
     contractor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

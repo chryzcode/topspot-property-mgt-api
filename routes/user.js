@@ -10,6 +10,7 @@ import {
   verifyForgotPasswordToken,
   verifyAccount,
   currentUser,
+  chooseUserType,
 } from "../controllers/user.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -44,6 +45,7 @@ router.get(
 
 router.route("/auth/signUp").post(signUp);
 router.route("/auth/sigin").post(signIn);
+router.route("/usertype/:userId").post(chooseUserType);
 router.route("/profile/:username").get(getUser);
 router.route("/current-user").get(authenticateUser, currentUser);
 router.route("/auth/logout").post(authenticateUser, logout);

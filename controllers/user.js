@@ -16,7 +16,7 @@ export const logout = async (req, res) => {
   const { userId } = req.user;
   req.body.token = "";
   await User.findOneAndUpdate({ _id: userId }, req.body);
-  res.status(StatusCodes.OK).json({success: "Successfully logged out"});
+  res.status(StatusCodes.OK).json({ success: "Successfully logged out" });
 };
 
 export const signUp = async (req, res) => {
@@ -97,7 +97,7 @@ export const signIn = async (req, res) => {
   var token = user.createJWT();
   await User.findOneAndUpdate({ token: token });
   token = user.token;
-  res.status(StatusCodes.OK).json({ user: { firstName : user.firstName, lastName: user.lastName }, token });
+  res.status(StatusCodes.OK).json({ user: { firstName: user.firstName, lastName: user.lastName }, token });
 };
 
 export const currentUser = async (req, res) => {
@@ -202,5 +202,13 @@ export const verifyForgotPasswordToken = async (req, res) => {
   }
 };
 
-
-
+export const chooseUserType = async (req, res) => {
+  const { userId } = req.params;
+  var user = await User.findOne({ _id: userId });
+  if (!user) {
+    throw new NotFoundError("User does not exists");
+  }
+  const { userType } = req.body;
+  user = await User.findOneAndUpdate({ _id: userId }, { userType: userType }, { new: true, runValidators: true });
+  res.status(StatusCodes.OK).json({ user });
+};

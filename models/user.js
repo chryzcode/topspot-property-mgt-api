@@ -3,6 +3,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
+const allowedCategories = ["plumbing", "painting", "furniture assembly", "electrical work", "room cleaning", "other"];
+
+const mediaSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    required: [true, "Please provide url"],
+  },
+});
+
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -41,16 +50,36 @@ const userSchema = new mongoose.Schema(
       ],
     },
 
-    Country: {
+    userType: {
+      type: String,
+      enum: ["houseOwner", "contractor", "tenant", "admin"],
+    },
+
+    country: {
       type: String,
     },
 
-    State: {
+    state: {
       type: String,
     },
 
-    City: {
+    postalCode: {
       type: String,
+    },
+
+    categories: {
+      type: [
+        {
+          type: String,
+          enum: allowedCategories, // Only allow specific categories
+        },
+      ],
+      required: [true, "Please provide category"],
+    },
+
+    yearsOfExperience: {
+      type: Number,
+      required: [true, "Please provide years of experience"],
     },
 
     password: {
@@ -78,9 +107,13 @@ userSchema.pre("save", async function () {
 });
 
 userSchema.methods.createJWT = function () {
-  const token = jwt.sign({ userId: this._id, firstName: this.firstName, lastName: this.lastName }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_LIFETIME,
-  });
+  const token = jwt.sign(
+    { userId: this._id, firstName: this.firstName, lastName: this.lastName },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_LIFETIME,
+    }
+  );
   this.token = token;
   return token;
 };
@@ -91,5 +124,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 };
 
 const User = mongoose.model("User", userSchema);
+const Media = mongoose.model("Media", mediaSchema);
 
-export { User };
+export { User, allowedCategories, Media };

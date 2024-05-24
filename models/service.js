@@ -3,10 +3,25 @@ import { allowedCategories } from "./user";
 
 const serviceSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    contractor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     name: {
       type: String,
       required: [true, "Please provide first name"],
     },
+
+    workScope: [
+      {
+        type: String,
+      },
+    ],
 
     categories: {
       type: [
@@ -32,6 +47,10 @@ const serviceSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Please provide amount"],
     },
+    paid: {
+      type: Boolean,
+      default: false,
+    },
     availableFromDate: {
       type: Date,
       required: [true, '"Please provide available from date'],
@@ -47,6 +66,12 @@ const serviceSchema = new mongoose.Schema(
       match: [/^([01]\d|2[0-3]):([0-5]\d)$/, "Please provide a valid time in HH:mm format"],
     },
     media: ["Media"],
+    status: {
+      type: String,
+      enum: ["ongoing", "pending", "completed", "cancelled"],
+      default: "pending",
+      required: [true, "Please provide status, ex. ongoing"],
+    },
   },
 
   {

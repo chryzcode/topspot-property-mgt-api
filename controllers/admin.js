@@ -53,3 +53,13 @@ export const upgradeToHomeOwner = async (req, res) => {
   user = await User.findOne({ _id: userId }, { userType: "houseOwner" }, { new: true, runValidators: true });
   res.status(StatusCodes.OK).json({ user });
 };
+
+export const downgradeToTenant = async (req, res) => {
+  const { userId } = req.params;
+  var user = await User.findOne({ _id: userId });
+  if (!user) {
+    throw new NotFoundError(`User not found`);
+  }
+  user = await User.findOne({ _id: userId }, { userType: "tenant" }, { new: true, runValidators: true });
+  res.status(StatusCodes.OK).json({ user });
+};

@@ -17,11 +17,27 @@ export const getServiceQuotes = async (req, res) => {
   res.status(StatusCodes.OK).json({ quotes });
 };
 
-import { StatusCodes } from "http-status-codes";
-import { NotFoundError, UnauthenticatedError } from "../errors";
-import User from "../models/user";
-import Quote from "../models/quote";
-import Service from "../models/service";
+export const createQuote = async (req, res) => {
+  const { serviceId } = req.params;
+  const { userId } = req.user;
+
+  const user = await User.findOne({ _id: userId });
+  const service = await Service.findOne({ _id: serviceId });
+  if (!service) {
+    throw new NotFoundError("Service does not exist");
+  }
+
+  // Check if the user is authenticated to approve
+  if (userId !== service.user && user.userType !== "contractor") {
+    throw new UnauthenticatedError("You are not authenticated to create quote");
+  }
+
+  req.body.user = userId;
+  req.body.service = serviceId;
+  let quote = await Quote.create({ ...req.body });
+  quote = await Quote.findOne({ _id: quote._id });
+  res.status(StatusCodes.CREATED).json({ quote });
+};
 
 export const approveQuote = async (req, res) => {
   const { quoteId } = req.params;
@@ -77,6 +93,3 @@ export const approveQuote = async (req, res) => {
 
   res.status(StatusCodes.OK).json({ quote: updatedQuote, service: updatedService });
 };
-
-
-

@@ -110,3 +110,57 @@ export const searchServices = async (req, res) => {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
   }
 };
+
+export const createService = async (req, res) => {
+  req.body.user = req.user.userId;
+  const media = req.body.media;
+  if (media) {
+    for (let i = 0; i < media.length; i++) {
+      try {
+        const result = await cloudinary.v2.uploader.upload(media[i].url, {
+          folder: "Topspot/Services/Media/",
+          use_filename: true,
+        });
+        media[i].url = result.url; // Replace media URL w
+      } catch (error) {
+        console.error(error);
+        throw new BadRequestError({ "error uploading image on cloudinary": error });
+      }
+    }
+  }
+  let service = await Service.create({ ...req.body });
+  service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar username userType _id");
+  res.status(StatusCodes.OK).json({ service });
+};
+
+export const editService = async (req, res) => {
+  const { serviceId } = req.params;
+  const userId = req.user.userId;
+  const media = req.body.media;
+
+  var service = await Service.findOne({ _id: serviceId, user: userId });
+  if (!service) {
+    throw new NotFoundError(`Service does not exist`);
+  }
+  if (media !== service.media) {
+    for (let i = 0; i < media.length; i++) {
+      try {
+        const result = await cloudinary.v2.uploader.upload(media[i].url, {
+          folder: "Topspot/Services/Media/",
+          use_filename: true,
+        });
+        media[i].url = result.url; // Replace media URL w
+      } catch (error) {
+        console.error(error);
+        throw new BadRequestError({ "error uploading image on cloudinary": error });
+      }
+    }
+  }
+
+  service = await Service.findOneAndUpdate({ _id: serviceId, user: userId }, req.body, {
+    new: true,
+    runValidators: true,
+  }).populate("user", "fullName avatar username userType _id");
+
+  res.status(StatusCodes.OK).json({ service });
+};

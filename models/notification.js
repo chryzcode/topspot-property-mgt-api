@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { Service } from "./service";
 
 const notificationSchema = mongoose.Schema(
   {

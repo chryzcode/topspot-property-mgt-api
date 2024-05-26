@@ -164,3 +164,26 @@ export const editService = async (req, res) => {
 
   res.status(StatusCodes.OK).json({ service });
 };
+
+
+export const completeService = async (req, res) => {
+  const { serviceId } = req.params;
+  const { userId } = req.user;
+
+  // Fetch the service details
+  const service = await Service.findOne({ _id: serviceId, user: userId });
+
+  // Validate existence of service
+  if (!service) {
+    throw new NotFoundError("Service does not exist");
+  }
+
+  // Update the service status to completed
+  const updatedService = await Service.findOneAndUpdate(
+    { _id: serviceId },
+    { status: "completed" },
+    { runValidators: true, new: true }
+  );
+
+  res.status(StatusCodes.OK).json({ service: updatedService });
+};

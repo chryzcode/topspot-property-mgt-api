@@ -93,3 +93,46 @@ export const approveQuote = async (req, res) => {
 
   res.status(StatusCodes.OK).json({ quote: updatedQuote, service: updatedService });
 };
+
+
+
+export const declineQuote = async (req, res) => {
+  const { quoteId } = req.params;
+  const { userId } = req.user;
+
+  // Fetch the user and quote details
+  const user = await User.findOne({ _id: userId });
+  const quote = await Quote.findOne({ _id: quoteId });
+
+  // Validate existence of quote
+  if (!quote) {
+    throw new NotFoundError("Quote does not exist");
+  }
+
+  // Check if the user is authenticated to decline
+  if (userId !== quote.user && user.userType !== "contractor") {
+    throw new UnauthenticatedError("You are not authenticated to decline");
+  }
+
+  // Check if the user is not the owner of the quote
+  if (userId === quote.user) {
+    throw new UnauthenticatedError("You cannot decline your own quote");
+  }
+
+  // Fetch the service associated with the quote
+  const service = await Service.findOne({ _id: quote.service });
+
+  // Check if the service has already been contracted
+  if (service.contractor) {
+    throw new UnauthenticatedError("Cannot decline the quote as the service has already been contracted");
+  }
+
+  // Decline the quote
+  const updatedQuote = await Quote.findOneAndUpdate(
+    { _id: quoteId },
+    { approve: false },
+    { runValidators: true, new: true }
+  );
+
+  res.status(StatusCodes.OK).json({ quote: updatedQuote });
+};

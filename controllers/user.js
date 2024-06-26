@@ -77,7 +77,7 @@ export const signIn = async (req, res) => {
     const maildata = {
       from: process.env.Email_User,
       to: user.email,
-      subject: `${user.fullName} verify your account`,
+      subject: `${user.firstName} verify your account`,
       html: `<p>Please use the following <a href="${domain}/auth/verify-account/?userId=${
         user.id
       }/?token=${encodeURIComponent(
@@ -152,7 +152,7 @@ export const deleteUser = async (req, res) => {
   if (!user) {
     throw new NotFoundError(`User with id ${userId} does not exist`);
   }
-  res.status(StatusCodes.OK).json({success: "Acccount successfully disabled"});
+  res.status(StatusCodes.OK).json({ success: "Acccount successfully disabled" });
 };
 
 export const sendForgotPasswordLink = async (req, res) => {
@@ -167,7 +167,7 @@ export const sendForgotPasswordLink = async (req, res) => {
   const maildata = {
     from: process.env.Email_User,
     to: user.email,
-    subject: `${user.fullName} you forgot your password`,
+    subject: `${user.firstName} you forgot your password`,
     html: `<p>Please use the following <a href="${domain}/verify/forgot-password/?userId=${
       user.id
     }/?token=${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
@@ -176,7 +176,7 @@ export const sendForgotPasswordLink = async (req, res) => {
     if (error) {
       res.status(StatusCodes.BAD_REQUEST).send();
     }
-    res.status(StatusCodes.OK).send("Check you email to change your password");
+    res.status(StatusCodes.OK).json({ success: "Check you email to change your password" });
   });
 };
 

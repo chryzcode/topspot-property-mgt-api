@@ -43,8 +43,8 @@ router.get(
   }
 );
 
-router.route("/auth/signUp").post(signUp);
-router.route("/auth/sigin").post(signIn);
+router.route("/auth/signup").post(signUp);
+router.route("/auth/signin").post(signIn);
 router.route("/usertype/:userId").post(chooseUserType);
 router.route("/profile/:username").get(getUser);
 router.route("/current-user").get(authenticateUser, currentUser);
@@ -52,7 +52,7 @@ router.route("/auth/logout").post(authenticateUser, logout);
 router.route("/update").put(authenticateUser, updateUser);
 router.route("/delete").delete(authenticateUser, deleteUser);
 router.route("/send-forgot-password-link").post(sendForgotPasswordLink);
-router.route("/auth/forgot-password/:userId/:token").get(verifyForgotPasswordToken);
+router.route("/auth/forgot-password/:userId/:token").post(verifyForgotPasswordToken);
 router.route("/auth/verify-account/:userId/:token").get(verifyAccount);
 
 export default router;

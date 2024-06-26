@@ -53,6 +53,7 @@ const userSchema = new mongoose.Schema(
     userType: {
       type: String,
       enum: ["houseOwner", "contractor", "tenant", "admin"],
+      required: [true, "Please provide user type"],
     },
 
     country: {
@@ -74,12 +75,10 @@ const userSchema = new mongoose.Schema(
           enum: allowedCategories, // Only allow specific categories
         },
       ],
-      required: [true, "Please provide category"],
     },
 
     yearsOfExperience: {
       type: Number,
-      required: [true, "Please provide years of experience"],
     },
 
     password: {

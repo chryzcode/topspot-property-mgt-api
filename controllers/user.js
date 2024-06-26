@@ -24,7 +24,7 @@ export const signUp = async (req, res) => {
   const maildata = {
     from: process.env.Email_User,
     to: user.email,
-    subject: `${user.fullName} verify your account`,
+    subject: `${user.firstName} verify your account`,
     html: `<p>Please use the following <a href="${domain}/auth/verify-account/?userId=${
       user.id
     }/?token=${encodeURIComponent(
@@ -52,7 +52,7 @@ export const verifyAccount = async (req, res) => {
   try {
     jwt.verify(token, secretKey);
     const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
-    res.status(StatusCodes.OK).send();
+    res.status(StatusCodes.OK).json({ success: "Account successfully verified" });
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
@@ -77,7 +77,7 @@ export const signIn = async (req, res) => {
     const maildata = {
       from: process.env.Email_User,
       to: user.email,
-      subject: `${user.fullName} verify your account`,
+      subject: `${user.firstName} verify your account`,
       html: `<p>Please use the following <a href="${domain}/auth/verify-account/?userId=${
         user.id
       }/?token=${encodeURIComponent(
@@ -124,9 +124,9 @@ export const updateUser = async (req, res) => {
   if (!user) {
     throw new NotFoundError(`User with does not exist`);
   }
-  if (!user.avatar && !req.body.avatar) {
-    throw new BadRequestError("The image field is required");
-  }
+  // if (!user.avatar && !req.body.avatar) {
+  //   throw new BadRequestError("The image field is required");
+  // }
 
   if (req.body.avatar) {
     try {
@@ -152,7 +152,7 @@ export const deleteUser = async (req, res) => {
   if (!user) {
     throw new NotFoundError(`User with id ${userId} does not exist`);
   }
-  res.status(StatusCodes.OK).send("Your account has been disabled");
+  res.status(StatusCodes.OK).json({ success: "Acccount successfully disabled" });
 };
 
 export const sendForgotPasswordLink = async (req, res) => {
@@ -167,7 +167,7 @@ export const sendForgotPasswordLink = async (req, res) => {
   const maildata = {
     from: process.env.Email_User,
     to: user.email,
-    subject: `${user.fullName} you forgot your password`,
+    subject: `${user.firstName} you forgot your password`,
     html: `<p>Please use the following <a href="${domain}/verify/forgot-password/?userId=${
       user.id
     }/?token=${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
@@ -176,7 +176,7 @@ export const sendForgotPasswordLink = async (req, res) => {
     if (error) {
       res.status(StatusCodes.BAD_REQUEST).send();
     }
-    res.status(StatusCodes.OK).send("Check you email to change your password");
+    res.status(StatusCodes.OK).json({ success: "Check you email to change your password" });
   });
 };
 

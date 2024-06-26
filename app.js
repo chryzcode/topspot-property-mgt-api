@@ -21,7 +21,7 @@ import adminRouter from "./routes/admin.js";
 import contractorRouter from "./routes/contractor.js"
 import notificationRouter from "./routes/notification.js"
 import paymentRouter from "./routes/payment.js"
-// import quoteRouter from "./routes/quote.js"
+import quoteRouter from "./routes/quote.js"
 // import serviceRouter from "./routes/service.js"
 
 

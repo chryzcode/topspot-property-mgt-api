@@ -44,7 +44,7 @@ router.get(
 );
 
 router.route("/auth/signup").post(signUp);
-router.route("/auth/sigin").post(signIn);
+router.route("/auth/signin").post(signIn);
 router.route("/usertype/:userId").post(chooseUserType);
 router.route("/profile/:username").get(getUser);
 router.route("/current-user").get(authenticateUser, currentUser);

@@ -52,7 +52,7 @@ export const verifyAccount = async (req, res) => {
   try {
     jwt.verify(token, secretKey);
     const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
-    res.status(StatusCodes.OK).send();
+    res.status(StatusCodes.OK).json({ success: "Account successfully verified" });
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
@@ -124,9 +124,9 @@ export const updateUser = async (req, res) => {
   if (!user) {
     throw new NotFoundError(`User with does not exist`);
   }
-  if (!user.avatar && !req.body.avatar) {
-    throw new BadRequestError("The image field is required");
-  }
+  // if (!user.avatar && !req.body.avatar) {
+  //   throw new BadRequestError("The image field is required");
+  // }
 
   if (req.body.avatar) {
     try {
@@ -152,7 +152,7 @@ export const deleteUser = async (req, res) => {
   if (!user) {
     throw new NotFoundError(`User with id ${userId} does not exist`);
   }
-  res.status(StatusCodes.OK).send("Your account has been disabled");
+  res.status(StatusCodes.OK).json({success: "Acccount successfully disabled"});
 };
 
 export const sendForgotPasswordLink = async (req, res) => {

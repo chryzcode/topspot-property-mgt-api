@@ -22,7 +22,7 @@ import contractorRouter from "./routes/contractor.js"
 import notificationRouter from "./routes/notification.js"
 import paymentRouter from "./routes/payment.js"
 import quoteRouter from "./routes/quote.js"
-// import serviceRouter from "./routes/service.js"
+import serviceRouter from "./routes/service.js"
 
 
 const app = express();
@@ -61,7 +61,12 @@ app.use(passport.session());
 
 app.use("/", userRouter);
 app.use("/admin", adminRouter);
-
+app.use("/admin", adminRouter);
+app.use("/admin", adminRouter);
+app.use("/admin", adminRouter);
+app.use("/admin", adminRouter);
+app.use("/admin", adminRouter);
+app.use("/admin", adminRouter);
 
 
 app.use(notFoundMiddleware);

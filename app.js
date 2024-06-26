@@ -18,7 +18,7 @@ import notFoundMiddleware from "./middleware/not-found.js";
 //import route
 import userRouter from "./routes/user.js";
 import adminRouter from "./routes/admin.js";
-// import contractorRouter from "./routes/contractor.js"
+import contractorRouter from "./routes/contractor.js"
 // import notificationRouter from "./routes/notification.js"
 // import paymentRouter from "./routes/payment.js"
 // import quoteRouter from "./routes/quote.js"

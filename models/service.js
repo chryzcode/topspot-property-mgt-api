@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { allowedCategories } from "./user";
+import { allowedCategories } from "./user.js";
 
 const serviceSchema = new mongoose.Schema(
   {

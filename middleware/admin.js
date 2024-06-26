@@ -1,5 +1,5 @@
-import { User } from "../models/user";
-import { UnauthenticatedError, NotFoundError } from "../errors/index";
+import { User } from "../models/user.js";
+import { UnauthenticatedError, NotFoundError } from "../errors/index.js";
 
 export default async (req, res, next) => {
   try {

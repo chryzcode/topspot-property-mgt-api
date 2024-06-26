@@ -61,12 +61,11 @@ app.use(passport.session());
 
 app.use("/", userRouter);
 app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminRouter);
+app.use("/contractor", contractorRouter);
+app.use("/notification", notificationRouter);
+app.use("/payment", paymentRouter);
+app.use("/quote", quoteRouter);
+app.use("/service", serviceRouter);
 
 
 app.use(notFoundMiddleware);

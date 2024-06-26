@@ -43,7 +43,7 @@ router.get(
   }
 );
 
-router.route("/auth/signUp").post(signUp);
+router.route("/auth/signup").post(signUp);
 router.route("/auth/sigin").post(signIn);
 router.route("/usertype/:userId").post(chooseUserType);
 router.route("/profile/:username").get(getUser);

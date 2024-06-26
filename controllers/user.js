@@ -24,7 +24,7 @@ export const signUp = async (req, res) => {
   const maildata = {
     from: process.env.Email_User,
     to: user.email,
-    subject: `${user.fullName} verify your account`,
+    subject: `${user.firstName} verify your account`,
     html: `<p>Please use the following <a href="${domain}/auth/verify-account/?userId=${
       user.id
     }/?token=${encodeURIComponent(

@@ -56,7 +56,7 @@ export const cancelService = async (req, res) => {
 };
 
 export const searchServices = async (req, res) => {
-  let { category, location, date, priceMin, priceMax, page, limit } = req.query;
+  let { category, location, date, priceMin, priceMax, page, limit, name } = req.query;
 
   // Convert search parameters to lowercase and parse as needed
   category = category ? category.toLowerCase() : null;
@@ -66,6 +66,7 @@ export const searchServices = async (req, res) => {
   priceMax = priceMax ? parseFloat(priceMax) : null;
   page = parseInt(page) || 0;
   limit = parseInt(limit) || 10;
+  name = name ? name.toLowerCase() : null;
 
   try {
     let query = {};
@@ -81,6 +82,10 @@ export const searchServices = async (req, res) => {
       query.location = {
         $regex: new RegExp(locationWords.join("|"), "i"),
       };
+    }
+
+    if (name) {
+      query.name = { $regex: new RegExp(name, "i") };
     }
 
     if (date) {

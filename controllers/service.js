@@ -1,6 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
+import cloudinary from "cloudinary";
 
 export const userServices = async (req, res) => {
   const { userId } = req.user;
@@ -113,25 +114,28 @@ export const searchServices = async (req, res) => {
 
 export const createService = async (req, res) => {
   req.body.user = req.user.userId;
-  const media = req.body.media;
-  if (media) {
-    for (let i = 0; i < media.length; i++) {
-      try {
+  const { media } = req.body;
+
+    // Upload media files to Cloudinary if they exist
+    if (media && media.length > 0) {
+      for (let i = 0; i < media.length; i++) {
         const result = await cloudinary.v2.uploader.upload(media[i].url, {
           folder: "Topspot/Services/Media/",
           use_filename: true,
         });
-        media[i].url = result.url; // Replace media URL w
-      } catch (error) {
-        console.error(error);
-        throw new BadRequestError({ "error uploading image on cloudinary": error });
+        media[i].url = result.url; // Replace media URL with Cloudinary URL
       }
     }
-  }
-  let service = await Service.create({ ...req.body });
-  service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar username userType _id");
-  res.status(StatusCodes.OK).json({ service });
-};
+
+    // Create service in the database
+    let service = await Service.create({ ...req.body });
+
+    // Optionally, populate additional data from the created service
+    service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar username userType _id");
+
+    // Respond with the created service
+    res.status(StatusCodes.OK).json({ service });
+  } 
 
 export const editService = async (req, res) => {
   const { serviceId } = req.params;

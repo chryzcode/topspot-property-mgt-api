@@ -68,6 +68,18 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    serviceCountry: {
+      type: String,
+    },
+
+    serviceState: {
+      type: String,
+    },
+
+    servicePostalCode: {
+      type: String,
+    },
+
     categories: {
       type: [
         {

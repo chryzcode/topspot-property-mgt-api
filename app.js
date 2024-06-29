@@ -29,17 +29,36 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 app.set("trust proxy", 1);
+
+const whitelist = ["http://localhost:3000", "https://top-spot.vercel.app"];
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || whitelist.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  optionsSuccessStatus: 200,
+  methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(helmet());
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000, //15 mins
-    max: 100, //limit each ip to 100 requests per windowsMs
+    windowMs: 15 * 60 * 1000, // 15 mins
+    max: 2000, // Adjust the limit if needed
   })
 );
 
-app.use(express.json());
-app.use(helmet());
-app.use(cors());
-app.use(express.urlencoded({ extended: true }));
+
+
 
 app.get("/", (req, res) => {
   res.send(

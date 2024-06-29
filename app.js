@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser"; // Add this line
 
 import session from "express-session";
 import passport from "passport";
@@ -18,12 +19,11 @@ import notFoundMiddleware from "./middleware/not-found.js";
 //import route
 import userRouter from "./routes/user.js";
 import adminRouter from "./routes/admin.js";
-import contractorRouter from "./routes/contractor.js"
-import notificationRouter from "./routes/notification.js"
-import paymentRouter from "./routes/payment.js"
-import quoteRouter from "./routes/quote.js"
-import serviceRouter from "./routes/service.js"
-
+import contractorRouter from "./routes/contractor.js";
+import notificationRouter from "./routes/notification.js";
+import paymentRouter from "./routes/payment.js";
+import quoteRouter from "./routes/quote.js";
+import serviceRouter from "./routes/service.js";
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -47,7 +47,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(helmet());
-app.use(cookieParser());
+app.use(cookieParser()); // Use cookieParser middleware
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
@@ -57,15 +57,9 @@ app.use(
   })
 );
 
-
-
-
 app.get("/", (req, res) => {
-  res.send(
-    `Topspot Property Management API`
-  );
+  res.send(`Topspot Property Management API`);
 });
-
 
 app.use(
   session({
@@ -86,15 +80,13 @@ app.use("/payment", paymentRouter);
 app.use("/quote", quoteRouter);
 app.use("/service", serviceRouter);
 
-
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
-
 
 const start = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    app.listen(port, () => console.log(`server is running on port ${port}`));
+    app.listen(port, () => console.log(`Server is running on port ${port}`));
   } catch (error) {
     console.log(error);
   }

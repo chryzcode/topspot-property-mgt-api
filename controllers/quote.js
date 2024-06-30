@@ -13,7 +13,18 @@ export const getServiceQuotes = async (req, res) => {
   if (!service) {
     throw new NotFoundError(`Service does not exist`);
   }
-  const quotes = await Quote.find({ service: serviceId });
+  const quotes = await Quote.find({ service: serviceId })
+    .populate("user", "username firstName lastName imageCloudinaryUrl userType _id")
+    .populate({
+      path: "service",
+      select:
+        "name categories description currency amount workScope location status availableFromDate availableToDate availableFromTime availableToTime", // Explicitly select fields
+      populate: [
+        { path: "user", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "contractor", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "media" },
+      ],
+    });
   res.status(StatusCodes.OK).json({ quotes });
 };
 
@@ -22,20 +33,34 @@ export const createQuote = async (req, res) => {
   const { userId } = req.user;
 
   const user = await User.findOne({ _id: userId });
-  const service = await Service.findOne({ _id: serviceId });
+  const service = await Service.findOne({ _id: serviceId }).populate("user contractor media");
+
   if (!service) {
     throw new NotFoundError("Service does not exist");
   }
 
   // Check if the user is authenticated to approve
-  if (userId !== service.user && user.userType !== "contractor") {
+  if (userId !== service.user._id.toString() && user.userType !== "contractor") {
     throw new UnauthenticatedError("You are not authenticated to create quote");
   }
 
   req.body.user = userId;
   req.body.service = serviceId;
   let quote = await Quote.create({ ...req.body });
-  quote = await Quote.findOne({ _id: quote._id });
+
+  quote = await Quote.findOne({ _id: quote._id })
+    .populate("user", "username firstName lastName imageCloudinaryUrl userType _id")
+    .populate({
+      path: "service",
+      select:
+        "name categories description currency amount workScope location status availableFromDate availableToDate availableFromTime availableToTime", // Explicitly select fields
+      populate: [
+        { path: "user", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "contractor", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "media" },
+      ],
+    });
+
   res.status(StatusCodes.CREATED).json({ quote });
 };
 
@@ -91,10 +116,8 @@ export const approveQuote = async (req, res) => {
     );
   }
 
-  res.status(StatusCodes.OK).json({ quote: updatedQuote, service: updatedService });
+  res.status(StatusCodes.OK).json({ success: "Quote accepted" });
 };
-
-
 
 export const declineQuote = async (req, res) => {
   const { quoteId } = req.params;
@@ -134,5 +157,5 @@ export const declineQuote = async (req, res) => {
     { runValidators: true, new: true }
   );
 
-  res.status(StatusCodes.OK).json({ quote: updatedQuote });
+  res.status(StatusCodes.OK).json({ success: "Quote declined" });
 };

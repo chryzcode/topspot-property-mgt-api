@@ -39,7 +39,7 @@ export const signUp = async (req, res) => {
   });
   const token = user.createJWT();
   res.status(StatusCodes.CREATED).json({
-    user: { firstName: user.firstName, lastName: user.lastName },
+    user,
     token,
     msg: "check your mail for account verification",
   });
@@ -97,7 +97,7 @@ export const signIn = async (req, res) => {
   var token = user.createJWT();
   await User.findOneAndUpdate({ token: token });
   token = user.token;
-  res.status(StatusCodes.OK).json({ user: { firstName: user.firstName, lastName: user.lastName }, token });
+  res.status(StatusCodes.OK).json({ user, token });
 };
 
 export const currentUser = async (req, res) => {

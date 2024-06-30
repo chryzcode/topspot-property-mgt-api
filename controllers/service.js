@@ -136,7 +136,7 @@ export const createService = async (req, res) => {
     let service = await Service.create({ ...req.body });
 
     // Optionally, populate additional data from the created service
-    service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar username userType _id");
+    service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
 
     // Respond with the created service
     res.status(StatusCodes.OK).json({ service });
@@ -169,7 +169,7 @@ export const editService = async (req, res) => {
   service = await Service.findOneAndUpdate({ _id: serviceId, user: userId }, req.body, {
     new: true,
     runValidators: true,
-  }).populate("user", "fullName avatar username userType _id");
+  }).populate("user", "fullName avatar userType _id");
 
   res.status(StatusCodes.OK).json({ service });
 };

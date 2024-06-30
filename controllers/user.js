@@ -62,7 +62,7 @@ export const verifyAccount = async (req, res) => {
 export const signIn = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    throw new BadRequestError("Put in your email/username and password");
+    throw new BadRequestError("Put in your email and password");
   }
   var user = await User.findOne({ email: email });
 
@@ -110,8 +110,8 @@ export const currentUser = async (req, res) => {
 };
 
 export const getUser = async (req, res) => {
-  const { username } = req.params;
-  const user = await User.findOne({ username: username });
+  const { userId } = req.params;
+  const user = await User.findOne({ _id: userId });
   if (!user) {
     throw new NotFoundError(`User does not exist`);
   }

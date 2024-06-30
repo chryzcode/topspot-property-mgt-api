@@ -14,14 +14,14 @@ export const getServiceQuotes = async (req, res) => {
     throw new NotFoundError(`Service does not exist`);
   }
   const quotes = await Quote.find({ service: serviceId })
-    .populate("user", "username firstName lastName imageCloudinaryUrl userType _id")
+    .populate("user", "firstName lastName imageCloudinaryUrl userType _id")
     .populate({
       path: "service",
       select:
         "name categories description currency amount workScope location status availableFromDate availableToDate availableFromTime availableToTime", // Explicitly select fields
       populate: [
-        { path: "user", select: "username firstName lastName imageCloudinaryUrl userType _id" },
-        { path: "contractor", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "user", select: "firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "contractor", select: "firstName lastName imageCloudinaryUrl userType _id" },
         { path: "media" },
       ],
     });
@@ -49,14 +49,14 @@ export const createQuote = async (req, res) => {
   let quote = await Quote.create({ ...req.body });
 
   quote = await Quote.findOne({ _id: quote._id })
-    .populate("user", "username firstName lastName imageCloudinaryUrl userType _id")
+    .populate("user", "firstName lastName imageCloudinaryUrl userType _id")
     .populate({
       path: "service",
       select:
         "name categories description currency amount workScope location status availableFromDate availableToDate availableFromTime availableToTime", // Explicitly select fields
       populate: [
-        { path: "user", select: "username firstName lastName imageCloudinaryUrl userType _id" },
-        { path: "contractor", select: "username firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "user", select: "firstName lastName imageCloudinaryUrl userType _id" },
+        { path: "contractor", select: "firstName lastName imageCloudinaryUrl userType _id" },
         { path: "media" },
       ],
     });

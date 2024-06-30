@@ -37,7 +37,7 @@ export const successfulPayment = async (req, res) => {
         new: true,
         runValidators: true,
       }
-    ).populate("user", "fullName avatar username userType _id");
+    ).populate("user", "fullName avatar userType _id");
 
     var payment = await Payment.findOne({ user: userId, service: serviceId, paid: true });
     if (!payment) {
@@ -49,7 +49,7 @@ export const successfulPayment = async (req, res) => {
     }
     payment = await Payment.findOne({ user: userId, service: serviceId, paid: true }).populate(
       "user",
-      "fullName avatar username userType _id"
+      "fullName avatar userType _id"
     );
 
     res.status(StatusCodes.OK).json({ service, payment });

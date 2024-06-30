@@ -46,7 +46,7 @@ router.get(
 router.route("/auth/signup").post(signUp);
 router.route("/auth/signin").post(signIn);
 router.route("/usertype/:userId").post(chooseUserType);
-router.route("/profile/:username").get(getUser);
+router.route("/profile/:userId").get(getUser);
 router.route("/current-user").get(authenticateUser, currentUser);
 router.route("/auth/logout").post(authenticateUser, logout);
 router.route("/update").put(authenticateUser, updateUser);

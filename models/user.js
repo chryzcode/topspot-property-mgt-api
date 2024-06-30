@@ -25,12 +25,6 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String,
     },
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-      match: [/^\S+$/, "Please provide a valid username"],
-    },
 
     email: {
       required: true,

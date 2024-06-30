@@ -91,6 +91,10 @@ export const approveQuote = async (req, res) => {
     throw new UnauthenticatedError("You cannot approve your own quote");
   }
 
+  if (service.paid == false) {
+    throw new BadRequestError("Service has not been paid for");
+  }
+
   // Approve the quote
   const updatedQuote = await Quote.findOneAndUpdate(
     { _id: quoteId },
@@ -144,6 +148,10 @@ export const declineQuote = async (req, res) => {
 
   // Fetch the service associated with the quote
   const service = await Service.findOne({ _id: quote.service });
+
+  if (service.paid == false) {
+    throw new BadRequestError("Service has not been paid for");
+  }
 
   // Check if the service has already been contracted
   if (service.contractor) {

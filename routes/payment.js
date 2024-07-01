@@ -5,7 +5,7 @@ import authenticateUser from "../middleware/authentication.js";
 
 const router = express.Router();
 
-router.route("/cancel-payment").get(authenticateUser, cancelPayment);
+router.route("/cancel-payment/:serviceId").get(authenticateUser, cancelPayment);
 router.route("/successful-payment/:serviceId").post(authenticateUser, successfulPayment);
 router.route("/make-payment/:serviceId").post(authenticateUser, makePayment);
 

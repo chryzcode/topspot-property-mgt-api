@@ -7,6 +7,7 @@ import { User } from "../models/user.js";
 import stripePackage from "stripe";
 
 const stripe = new stripePackage(process.env.STRIPE_SECRET_KEY);
+const DOMAIN = process.env.DOMAIN;
 
 export const cancelPayment = async (req, res) => {
   const { userId } = req.user;

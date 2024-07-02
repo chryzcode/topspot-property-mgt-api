@@ -78,9 +78,9 @@ export const signIn = async (req, res) => {
       from: process.env.Email_User,
       to: user.email,
       subject: `${user.firstName} verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/?userId=${
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/userId=${
         user.id
-      }/?token=${encodeURIComponent(
+      }/token=${encodeURIComponent(
         linkVerificationtoken
       )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
     };
@@ -168,9 +168,9 @@ export const sendForgotPasswordLink = async (req, res) => {
     from: process.env.Email_User,
     to: user.email,
     subject: `${user.firstName} you forgot your password`,
-    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/?userId=${
+    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/userId=${
       user.id
-    }/?token=${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
+    }/token=${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
   };
   transporter.sendMail(maildata, (error, info) => {
     if (error) {

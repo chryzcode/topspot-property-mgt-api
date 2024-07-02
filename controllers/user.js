@@ -25,9 +25,9 @@ export const signUp = async (req, res) => {
     from: process.env.Email_User,
     to: user.email,
     subject: `${user.firstName} verify your account`,
-    html: `<p>Please use the following <a href="${domain}/auth/verify-account/userId=${
+    html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
       user.id
-    }/token=${encodeURIComponent(
+    }/${encodeURIComponent(
       linkVerificationtoken
     )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
   };
@@ -46,12 +46,19 @@ export const signUp = async (req, res) => {
 };
 
 export const verifyAccount = async (req, res) => {
-  const token = req.params.token;
-  const userId = req.params.userId;
+  const { token, userId } = req.params; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
+
   try {
-    jwt.verify(token, secretKey);
+    const decoded = jwt.verify(token, secretKey); // Verify the token
+    console.log("Token decoded successfully:", decoded);
+
     const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
+
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+    }
+
     res.status(StatusCodes.OK).json({ success: "Account successfully verified" });
   } catch (error) {
     console.error("Token verification failed:", error);
@@ -78,9 +85,9 @@ export const signIn = async (req, res) => {
       from: process.env.Email_User,
       to: user.email,
       subject: `${user.firstName} verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/userId=${
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
         user.id
-      }/token=${encodeURIComponent(
+      }/${encodeURIComponent(
         linkVerificationtoken
       )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
     };
@@ -168,9 +175,9 @@ export const sendForgotPasswordLink = async (req, res) => {
     from: process.env.Email_User,
     to: user.email,
     subject: `${user.firstName} you forgot your password`,
-    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/userId=${
+    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/=${
       user.id
-    }/token=${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
+    }/${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
   };
   transporter.sendMail(maildata, (error, info) => {
     if (error) {

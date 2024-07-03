@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
+const FRONTEND_URLFRONTEND_URLFRONTEND_URL = process.env.FRONTEND_URL
 
 const linkVerificationtoken = generateToken(uniqueID);
 
@@ -59,7 +60,8 @@ export const verifyAccount = async (req, res) => {
       return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
     }
 
-    res.status(StatusCodes.OK).json({ success: "Account successfully verified" });
+    // Redirect to the desired route after successful verification
+    res.redirect(`${FRONTEND_URL}/register/onboarding?stage=success`); 
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });

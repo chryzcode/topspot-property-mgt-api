@@ -6,10 +6,18 @@ import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
 import cloudinary from "cloudinary";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+
+cloudinary.v2.config(process.env.CLOUDINARY_URL);
+
+// Set up Multer storage configuration
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
-const FRONTEND_URLFRONTEND_URLFRONTEND_URL = process.env.FRONTEND_URL
+const FRONTEND_URL = process.env.FRONTEND_URL
 
 const linkVerificationtoken = generateToken(uniqueID);
 
@@ -129,32 +137,48 @@ export const getUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { userId } = req.user;
-  var user = await User.findOne({ _id: userId });
-  if (!user) {
-    throw new NotFoundError(`User with does not exist`);
-  }
-  // if (!user.avatar && !req.body.avatar) {
-  //   throw new BadRequestError("The image field is required");
-  // }
+  let user = await User.findOne({ _id: userId });
 
-  if (req.body.avatar) {
+  if (!user) {
+    throw new NotFoundError("User does not exist");
+  }
+
+  if (req.file) {
     try {
-      const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
-        folder: "Topspot/User/Avatar/",
-        use_filename: true,
-      });
-      req.body.avatar = result.url;
+      const result = await cloudinary.v2.uploader.upload_stream(
+        {
+          folder: "Topspot/User/Avatar/",
+          use_filename: true,
+        },
+        (error, result) => {
+          if (error) {
+            console.error(error);
+            throw new BadRequestError({ "error uploading image on cloudinary": error });
+          } else {
+            req.body.avatar = result.url;
+            updateUserDetails(req, res, userId);
+          }
+        }
+      );
+
+      req.file.stream.pipe(result);
     } catch (error) {
       console.error(error);
       throw new BadRequestError({ "error uploading image on cloudinary": error });
     }
+  } else {
+    updateUserDetails(req, res, userId);
   }
+};
 
-  user = await User.findOneAndUpdate({ _id: userId }, req.body, { new: true, runValidators: true });
+const updateUserDetails = async (req, res, userId) => {
+  const user = await User.findOneAndUpdate({ _id: userId }, req.body, {
+    new: true,
+    runValidators: true,
+  });
 
   res.status(StatusCodes.OK).json({ user });
 };
-
 export const deleteUser = async (req, res) => {
   const { userId } = req.user;
   const user = await User.findOneAndUpdate({ _id: userId }, { verified: false }, { new: true, runValidators: true });

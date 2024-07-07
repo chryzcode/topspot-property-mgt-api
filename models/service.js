@@ -81,6 +81,18 @@ const serviceSchema = new mongoose.Schema(
       default: "pending",
       required: [true, "Please provide status, ex. ongoing"],
     },
+    country: {
+      type: String,
+      required: [true, "Please provide service country"],
+    },
+    state: {
+      type: String,
+      required: [true, "Please provide service state"],
+    },
+    postal_code: {
+      type: String,
+      required: [true, "Please provide service postal code"],
+    },
   },
 
   {

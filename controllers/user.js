@@ -29,37 +29,55 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  const user = await User.create({ ...req.body });
-  const maildata = {
-    from: process.env.Email_User,
-    to: user.email,
-    subject: `${user.firstName} verify your account`,
-    html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
-      user.id
-    }/${encodeURIComponent(
-      linkVerificationtoken
-    )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
-  };
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      res.status(StatusCodes.BAD_REQUEST).send();
-    }
-    res.status(StatusCodes.OK).send();
-  });
-  const token = user.createJWT();
-  res.status(StatusCodes.CREATED).json({
-    user,
-    token,
-    msg: "check your mail for account verification",
-  });
+  try {
+    const user = await User.create({ ...req.body });
+
+    // Generate a verification token with a 10-minute expiry
+    const linkVerificationtoken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "10m" });
+
+    // Ensure domain is set in your environment variables
+    const domain = process.env.DOMAIN;
+
+    const maildata = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: `${user.firstName}, verify your account`,
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user._id}/${encodeURIComponent(
+        linkVerificationtoken
+      )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
+    };
+
+    // Send the email
+    transporter.sendMail(maildata, (error, info) => {
+      if (error) {
+        console.error("Error sending mail:", error);
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Error sending verification email" });
+      }
+      console.log("Verification email sent:", info.response);
+    });
+
+    // Generate the JWT for immediate use
+    const token = user.createJWT();
+
+    // Respond to the client
+    res.status(StatusCodes.CREATED).json({
+      user,
+      token,
+      msg: "Check your email for account verification",
+    });
+  } catch (error) {
+    console.error("Error during sign-up:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Sign-up failed" });
+  }
 };
 
+
 export const verifyAccount = async (req, res) => {
-  const { token, userId } = req.params; // Correctly extract token and userId
+  const { token, userId } = req.params;
   const secretKey = process.env.JWT_SECRET;
 
   try {
-    const decoded = jwt.verify(token, secretKey); // Verify the token
+    const decoded = jwt.verify(token, secretKey);
     console.log("Token decoded successfully:", decoded);
 
     const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
@@ -68,8 +86,7 @@ export const verifyAccount = async (req, res) => {
       return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
     }
 
-    // Redirect to the desired route after successful verification
-    res.redirect(`${FRONTEND_URL}/register/onboarding?stage=success`); 
+    res.redirect(`${process.env.FRONTEND_URL}/register/onboarding`);
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
@@ -201,7 +218,7 @@ export const sendForgotPasswordLink = async (req, res) => {
     from: process.env.Email_User,
     to: user.email,
     subject: `${user.firstName} you forgot your password`,
-    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/=${
+    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/${
       user.id
     }/${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
   };

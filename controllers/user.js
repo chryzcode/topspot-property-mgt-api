@@ -54,14 +54,12 @@ export const signUp = async (req, res) => {
   });
 };
 
-
-
 export const verifyAccount = async (req, res) => {
-  const { token, userId } = req.params;
+  const { token, userId } = req.params; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
 
   try {
-    const decoded = jwt.verify(token, secretKey);
+    const decoded = jwt.verify(token, secretKey); // Verify the token
     console.log("Token decoded successfully:", decoded);
 
     const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
@@ -70,53 +68,15 @@ export const verifyAccount = async (req, res) => {
       return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/register/onboarding`);
+    // Redirect to the desired route after successful verification
+    res.redirect(`${FRONTEND_URL}/register/onboarding`); 
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
   }
 };
 
-export const signIn = async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    throw new BadRequestError("Put in your email and password");
-  }
-  var user = await User.findOne({ email: email });
 
-  if (!user) {
-    throw new UnauthenticatedError("User does not exist");
-  }
-  const passwordMatch = await user.comparePassword(password);
-  if (!passwordMatch) {
-    throw new UnauthenticatedError("Invalid password");
-  }
-  if (user.verified == false) {
-    const maildata = {
-      from: process.env.Email_User,
-      to: user.email,
-      subject: `${user.firstName} verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
-        user.id
-      }/${encodeURIComponent(
-        linkVerificationtoken
-      )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
-    };
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send();
-      }
-      console.log(info);
-      res.status(StatusCodes.OK).send();
-    });
-    throw new UnauthenticatedError("Account is not verified, kindly check your mail for verfication");
-  }
-  var token = user.createJWT();
-  await User.findOneAndUpdate({ token: token });
-  token = user.token;
-  res.status(StatusCodes.OK).json({ user, token });
-};
 
 export const currentUser = async (req, res) => {
   const { userId } = req.user;

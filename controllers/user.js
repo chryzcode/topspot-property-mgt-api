@@ -21,6 +21,49 @@ const FRONTEND_URL = process.env.FRONTEND_URL
 
 const linkVerificationtoken = generateToken(uniqueID);
 
+
+export const signIn = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    throw new BadRequestError("Put in your email and password");
+  }
+  var user = await User.findOne({ email: email });
+
+  if (!user) {
+    throw new UnauthenticatedError("User does not exist");
+  }
+  const passwordMatch = await user.comparePassword(password);
+  if (!passwordMatch) {
+    throw new UnauthenticatedError("Invalid password");
+  }
+  if (user.verified == false) {
+    const maildata = {
+      from: process.env.Email_User,
+      to: user.email,
+      subject: `${user.firstName} verify your account`,
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
+        user.id
+      }/${encodeURIComponent(
+        linkVerificationtoken
+      )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
+    };
+    transporter.sendMail(maildata, (error, info) => {
+      if (error) {
+        console.log(error);
+        res.status(StatusCodes.BAD_REQUEST).send();
+      }
+      console.log(info);
+      res.status(StatusCodes.OK).send();
+    });
+    throw new UnauthenticatedError("Account is not verified, kindly check your mail for verfication");
+  }
+  var token = user.createJWT();
+  await User.findOneAndUpdate({ token: token });
+  token = user.token;
+  res.status(StatusCodes.OK).json({ user, token });
+};
+
+
 export const logout = async (req, res) => {
   const { userId } = req.user;
   req.body.token = "";

@@ -29,47 +29,31 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  try {
-    const user = await User.create({ ...req.body });
-
-    // Generate a verification token with a 10-minute expiry
-    const linkVerificationtoken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "10m" });
-
-    // Ensure domain is set in your environment variables
-    const domain = process.env.DOMAIN;
-
-    const maildata = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: `${user.firstName}, verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user._id}/${encodeURIComponent(
-        linkVerificationtoken
-      )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
-    };
-
-    // Send the email
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        console.error("Error sending mail:", error);
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Error sending verification email" });
-      }
-      console.log("Verification email sent:", info.response);
-    });
-
-    // Generate the JWT for immediate use
-    const token = user.createJWT();
-
-    // Respond to the client
-    res.status(StatusCodes.CREATED).json({
-      user,
-      token,
-      msg: "Check your email for account verification",
-    });
-  } catch (error) {
-    console.error("Error during sign-up:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Sign-up failed" });
-  }
+  const user = await User.create({ ...req.body });
+  const maildata = {
+    from: process.env.Email_User,
+    to: user.email,
+    subject: `${user.firstName} verify your account`,
+    html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
+      user.id
+    }/${encodeURIComponent(
+      linkVerificationtoken
+    )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
+  };
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      res.status(StatusCodes.BAD_REQUEST).send();
+    }
+    res.status(StatusCodes.OK).send();
+  });
+  const token = user.createJWT();
+  res.status(StatusCodes.CREATED).json({
+    user,
+    token,
+    msg: "check your mail for account verification",
+  });
 };
+
 
 
 export const verifyAccount = async (req, res) => {

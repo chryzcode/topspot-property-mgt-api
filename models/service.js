@@ -10,7 +10,6 @@ const serviceSchema = new mongoose.Schema(
 
     location: {
       type: String,
-      required: [true, "Please provide location"],
     },
 
     contractor: {

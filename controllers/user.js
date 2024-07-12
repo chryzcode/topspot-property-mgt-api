@@ -14,13 +14,11 @@ cloudinary.v2.config(process.env.CLOUDINARY_URL);
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
-const FRONTEND_URL = process.env.FRONTEND_URL
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const linkVerificationtoken = generateToken(uniqueID);
-
 
 export const signIn = async (req, res) => {
   const { email, password } = req.body;
@@ -41,9 +39,7 @@ export const signIn = async (req, res) => {
       from: process.env.Email_User,
       to: user.email,
       subject: `${user.firstName} verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
-        user.id
-      }/${encodeURIComponent(
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
         linkVerificationtoken
       )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
     };
@@ -63,7 +59,6 @@ export const signIn = async (req, res) => {
   res.status(StatusCodes.OK).json({ user, token });
 };
 
-
 export const logout = async (req, res) => {
   const { userId } = req.user;
   req.body.token = "";
@@ -72,29 +67,59 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  const user = await User.create({ ...req.body });
-  const maildata = {
-    from: process.env.Email_User,
-    to: user.email,
-    subject: `${user.firstName} verify your account`,
-    html: `<p>Please use the following <a href="${domain}/auth/verify-account/${
-      user.id
-    }/${encodeURIComponent(
-      linkVerificationtoken
-    )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
-  };
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      res.status(StatusCodes.BAD_REQUEST).send();
-    }
-    res.status(StatusCodes.OK).send();
-  });
-  const token = user.createJWT();
-  res.status(StatusCodes.CREATED).json({
-    user,
-    token,
-    msg: "check your mail for account verification",
-  });
+  try {
+    const user = await User.create({ ...req.body });
+    const token = user.createJWT();
+
+    const domain = process.env.DOMAIN;
+    const linkVerificationtoken = user.generateVerificationToken(); // Generate verification token method
+
+    const maildata = {
+      from: process.env.Email_User,
+      to: user.email,
+      subject: `${user.firstName}, verify your account`,
+      html: `
+        <p>Hi ${user.firstName},</p>
+        <p>Thank you for signing up. Please use the following <a href="${domain}/auth/verify-account/${
+        user.id
+      }/${encodeURIComponent(linkVerificationtoken)}">link</a> to verify your account. Link expires in 10 mins.</p>
+        <p>Best regards,<br/>Your Company</p>
+      `,
+      text: `Hi ${
+        user.firstName
+      },\n\nThank you for signing up. Please use the following link to verify your account: ${domain}/auth/verify-account/${
+        user.id
+      }/${encodeURIComponent(linkVerificationtoken)}. Link expires in 10 mins.\n\nBest regards,\nYour Company`,
+    };
+
+    // Set up nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: true, // true for 465, false for other ports
+      auth: {
+        user: process.env.Email_User,
+        pass: process.env.Email_Password,
+      },
+    });
+
+    // Send email
+    transporter.sendMail(maildata, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email." });
+      }
+      console.log("Email sent:", info.response);
+      res.status(StatusCodes.CREATED).json({
+        user,
+        token,
+        msg: "Check your email for account verification",
+      });
+    });
+  } catch (error) {
+    console.error("Error during sign-up:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Sign-up failed." });
+  }
 };
 
 export const verifyAccount = async (req, res) => {
@@ -112,14 +137,12 @@ export const verifyAccount = async (req, res) => {
     }
 
     // Redirect to the desired route after successful verification
-    res.redirect(`${FRONTEND_URL}/register/onboarding`); 
+    res.redirect(`${FRONTEND_URL}/register/onboarding`);
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
   }
 };
-
-
 
 export const currentUser = async (req, res) => {
   const { userId } = req.user;
@@ -205,9 +228,9 @@ export const sendForgotPasswordLink = async (req, res) => {
     from: process.env.Email_User,
     to: user.email,
     subject: `${user.firstName} you forgot your password`,
-    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/${
-      user.id
-    }/${encodeURIComponent(linkVerificationtoken)}">link</a> for verification. Link expires in 30 mins.</p>`,
+    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/${user.id}/${encodeURIComponent(
+      linkVerificationtoken
+    )}">link</a> for verification. Link expires in 30 mins.</p>`,
   };
   transporter.sendMail(maildata, (error, info) => {
     if (error) {

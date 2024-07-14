@@ -3,7 +3,6 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Quote } from "../models/quote.js";
-import { Payment } from "../models/payment.js";
 import { User } from "../models/user.js";
 
 export const contractorServices = async (req, res) => {
@@ -128,23 +127,23 @@ export const contractorApproveQuote = async (req, res) => {
 };
 
 
-export const contractorReplyQoute = async (req, res) => {
+export const contractorReplyQuote = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { serviceId } = req.params;
+    const { quoteId } = req.params;
     const { description, estimatedCost, availableFromDate, availableToDate, availableFromTime, availableToTime } =
       req.body;
 
-    // Fetch the user and service details
+    // Fetch the user and quote details
     const user = await User.findById(userId);
-    const service = await Service.findById(serviceId);
+    const quote = await Quote.findById(quoteId);
 
-    // Validate existence of user and service
+    // Validate existence of user and quote
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    if (!service) {
-      throw new NotFoundError("Service not found");
+    if (!quote) {
+      throw new NotFoundError("Quote not found");
     }
 
     // Check if the user is a contractor
@@ -172,10 +171,10 @@ export const contractorReplyQoute = async (req, res) => {
       throw new BadRequestError("Please provide a valid time in HH:mm format");
     }
 
-    // Create a new quote
+    // Create a new quote with updated information
     const newQuote = await Quote.create({
       user: userId,
-      service: serviceId,
+      service: quote.service,
       description,
       estimatedCost,
       availableFromDate,

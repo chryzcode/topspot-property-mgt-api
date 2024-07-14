@@ -52,7 +52,6 @@ export const allContractorServices = async (req, res) => {
   res.status(StatusCodes.OK).json({ services });
 };
 
-
 export const contractorApproveQuote = async (req, res) => {
   try {
     const { quoteId } = req.params;
@@ -110,6 +109,7 @@ export const contractorApproveQuote = async (req, res) => {
         availableToDate,
         availableFromTime,
         availableToTime,
+        status: "ongoing",
       },
       { runValidators: true, new: true }
     );
@@ -125,7 +125,6 @@ export const contractorApproveQuote = async (req, res) => {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
   }
 };
-
 
 export const contractorReplyQuote = async (req, res) => {
   try {

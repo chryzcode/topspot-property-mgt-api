@@ -126,7 +126,6 @@ export const searchServices = async (req, res) => {
   }
 };
 
-
 export const createService = async (req, res) => {
   try {
     req.body.user = req.user.userId;
@@ -201,7 +200,6 @@ export const editService = async (req, res) => {
   res.status(StatusCodes.OK).json({ service });
 };
 
-
 export const completeService = async (req, res) => {
   const { serviceId } = req.params;
   const { userId } = req.user;
@@ -223,7 +221,6 @@ export const completeService = async (req, res) => {
 
   res.status(StatusCodes.OK).json({ service: updatedService });
 };
-
 
 export const approveQuoteByOwner = async (req, res) => {
   const { quoteId } = req.params;
@@ -260,6 +257,7 @@ export const approveQuoteByOwner = async (req, res) => {
     const updateData = {
       amount: quote.estimatedCost,
       description: quote.description,
+      status: "ongoing",
     };
 
     // Update the availability details if provided in the quote

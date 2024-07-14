@@ -1,30 +1,15 @@
 import mongoose from "mongoose";
-import { allowedCategories } from "./user.js";
 
 const quoteSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Please provide first name"],
-    },
-
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-        },
+    },
 
     service: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Service",
-    },
-    categories: {
-      type: [
-        {
-          type: String,
-          enum: allowedCategories, // Only allow specific categories
-        },
-      ],
-      required: [true, "Please provide category"],
     },
 
     description: {
@@ -40,6 +25,21 @@ const quoteSchema = new mongoose.Schema(
     approve: {
       type: Boolean,
       default: false,
+    },
+
+    availableFromDate: {
+      type: Date,
+    },
+    availableToDate: {
+      type: Date,
+    },
+    availableFromTime: {
+      type: String,
+      match: [/^([01]\d|2[0-3]):([0-5]\d)$/, "Please provide a valid time in HH:mm format"],
+    },
+    availableToTime: {
+      type: String,
+      match: [/^([01]\d|2[0-3]):([0-5]\d)$/, "Please provide a valid time in HH:mm format"],
     },
   },
 

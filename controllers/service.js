@@ -1,5 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
+import { User } from "../models/user.js";
+import { Quote } from "../models/quote.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import cloudinary from "cloudinary";
 import multer from "multer";
@@ -126,28 +128,44 @@ export const searchServices = async (req, res) => {
 
 
 export const createService = async (req, res) => {
-  req.body.user = req.user.userId;
-  const { media } = req.body;
+  try {
+    req.body.user = req.user.userId;
+    const { media, description, amount } = req.body;
 
-  // Upload media files to Cloudinary if they exist
-  if (media && media.length > 0) {
-    for (let i = 0; i < media.length; i++) {
-      const result = await cloudinary.v2.uploader.upload(media[i].url, {
-        folder: "Topspot/Services/Media/",
-        use_filename: true,
-      });
-      media[i].url = result.url; // Replace media URL with Cloudinary URL
+    // Upload media files to Cloudinary if they exist
+    if (media && media.length > 0) {
+      for (let i = 0; i < media.length; i++) {
+        const result = await cloudinary.v2.uploader.upload(media[i].url, {
+          folder: "Topspot/Services/Media/",
+          use_filename: true,
+        });
+        media[i].url = result.url; // Replace media URL with Cloudinary URL
+      }
     }
+
+    // Create service in the database
+    let service = await Service.create({ ...req.body });
+
+    // Create a quote for the newly created service
+    const quote = await Quote.create({
+      user: req.user.userId,
+      service: service._id,
+      description: description,
+      estimatedCost: amount,
+    });
+
+    // Optionally, populate additional data from the created service and quote
+    service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
+    const populatedQuote = await Quote.findOne({ _id: quote._id }).populate("user", "fullName avatar userType _id");
+
+    // Respond with the created service and quote
+    res.status(StatusCodes.OK).json({ service, quote: populatedQuote });
+  } catch (error) {
+    console.error("Error creating service and quote:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "An error occurred while creating the service and quote" });
   }
-
-  // Create service in the database
-  let service = await Service.create({ ...req.body });
-
-  // Optionally, populate additional data from the created service
-  service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
-
-  // Respond with the created service
-  res.status(StatusCodes.OK).json({ service });
 };
 
 export const editService = async (req, res) => {
@@ -204,4 +222,73 @@ export const completeService = async (req, res) => {
   );
 
   res.status(StatusCodes.OK).json({ service: updatedService });
+};
+
+
+export const approveQuoteByOwner = async (req, res) => {
+  const { quoteId } = req.params;
+  const { userId } = req.user;
+
+  try {
+    // Fetch the user, quote, and service details
+    const user = await User.findById(userId);
+    const quote = await Quote.findById(quoteId);
+    const service = await Service.findById(quote.service);
+
+    // Validate existence of quote and service
+    if (!quote) {
+      throw new NotFoundError("Quote does not exist");
+    }
+    if (!service) {
+      throw new NotFoundError("Service does not exist");
+    }
+
+    // Check if the user is the owner of the service
+    if (service.user.toString() !== userId.toString()) {
+      throw new UnauthenticatedError("You are not authorized to approve this quote");
+    }
+
+    // Check if the service has been paid for
+    if (!service.paid) {
+      throw new BadRequestError("Service has not been paid for");
+    }
+
+    // Approve the quote
+    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+
+    // Prepare the update data for the service
+    const updateData = {
+      amount: quote.estimatedCost,
+      description: quote.description,
+    };
+
+    // Update the availability details if provided in the quote
+    if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+    if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+    if (quote.availableFromTime) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(quote.availableFromTime)) {
+        throw new BadRequestError("Please provide a valid available from time in HH:mm format");
+      }
+      updateData.availableFromTime = quote.availableFromTime;
+    }
+    if (quote.availableToTime) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(quote.availableToTime)) {
+        throw new BadRequestError("Please provide a valid available to time in HH:mm format");
+      }
+      updateData.availableToTime = quote.availableToTime;
+    }
+
+    // Update the service with the approved quote details
+    const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
+      runValidators: true,
+      new: true,
+    });
+
+    res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
+  } catch (error) {
+    console.error("Error approving quote:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
+  }
 };

@@ -25,7 +25,7 @@ export const signIn = async (req, res) => {
   if (!email || !password) {
     throw new BadRequestError("Put in your email and password");
   }
-  var user = await User.findOne({ email: email });
+  const user = await User.findOne({ email: email });
 
   if (!user) {
     throw new UnauthenticatedError("User does not exist");
@@ -34,27 +34,33 @@ export const signIn = async (req, res) => {
   if (!passwordMatch) {
     throw new UnauthenticatedError("Invalid password");
   }
+
   if (user.verified == false) {
-    const maildata = {
-      from: process.env.Email_User,
-      to: user.email,
-      subject: `${user.firstName} verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
-        linkVerificationtoken
-      )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
-    };
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send();
-      }
-      console.log(info);
-      res.status(StatusCodes.OK).send();
-    });
-    throw new UnauthenticatedError("Account is not verified, kindly check your mail for verfication");
+    if (user.userType === "contractor") {
+      throw new UnauthenticatedError("Account is not approved yet.");
+    } else {
+      const maildata = {
+        from: process.env.Email_User,
+        to: user.email,
+        subject: `${user.firstName} verify your account`,
+        html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
+          linkVerificationtoken
+        )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
+      };
+      transporter.sendMail(maildata, (error, info) => {
+        if (error) {
+          console.log(error);
+          res.status(StatusCodes.BAD_REQUEST).send();
+        }
+        console.log(info);
+        res.status(StatusCodes.OK).send();
+      });
+      throw new UnauthenticatedError("Account is not verified, kindly check your mail for verification");
+    }
   }
-  var token = user.createJWT();
-  await User.findOneAndUpdate({ token: token });
+
+  let token = user.createJWT();
+  await User.findOneAndUpdate({ _id: user._id }, { token: token });
   token = user.token;
   res.status(StatusCodes.OK).json({ user, token });
 };
@@ -70,9 +76,17 @@ export const signUp = async (req, res) => {
   try {
     const user = await User.create({ ...req.body });
     const token = user.createJWT();
-
     const domain = process.env.DOMAIN;
     const linkVerificationtoken = user.generateVerificationToken(); // Generate verification token method
+
+    if (user.userType === "contractor") {
+      res.status(StatusCodes.CREATED).json({
+        user,
+        token,
+        msg: "Account will be verified by an admin.",
+      });
+      return;
+    }
 
     const maildata = {
       from: process.env.Email_User,
@@ -96,7 +110,7 @@ export const signUp = async (req, res) => {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
-      secure: true, // true for 465, false for other ports
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.Email_User,
         pass: process.env.Email_Password,

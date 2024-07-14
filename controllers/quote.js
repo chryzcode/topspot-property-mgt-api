@@ -65,105 +65,106 @@ export const createQuote = async (req, res) => {
 };
 
 export const approveQuote = async (req, res) => {
-  const { quoteId } = req.params;
-  const { userId } = req.user;
+  try {
+    const { quoteId } = req.params;
+    const { userId } = req.user;
 
-  // Fetch the user, quote, and service details
-  const user = await User.findOne({ _id: userId });
-  const quote = await Quote.findOne({ _id: quoteId });
-  const service = await Service.findOne({ _id: quote.service });
+    // Fetch the user, quote, and service details
+    const user = await User.findById(userId);
+    const quote = await Quote.findById(quoteId);
+    const service = await Service.findById(quote.service);
 
-  // Validate existence of quote and service
-  if (!quote) {
-    throw new NotFoundError("Quote does not exist");
+    // Validate existence of user, quote, and service
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+    }
+    if (!quote) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
+    }
+    if (!service) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
+    }
+
+    // Ensure the user is the owner of the service
+    if (service.user.toString() !== userId.toString()) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Only the owner of the service can approve the quote" });
+    }
+
+    // Ensure the service has been paid for
+    if (!service.paid) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Service has not been paid for" });
+    }
+
+    // Approve the quote
+    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+
+    // Update the service with the quote details
+    const updateData = {
+      amount: quote.estimatedCost,
+      contractor: quote.user,
+      description: quote.description,
+    };
+
+    // Check if the quote includes availability details
+    if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+    if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+    if (quote.availableFromTime) updateData.availableFromTime = quote.availableFromTime;
+    if (quote.availableToTime) updateData.availableToTime = quote.availableToTime;
+
+    const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
+      runValidators: true,
+      new: true,
+    });
+
+    // Respond with success message
+    return res.status(StatusCodes.OK).json({
+      success: "Quote approved and service updated",
+      updatedQuote,
+      updatedService,
+    });
+  } catch (error) {
+    console.error("Error approving quote:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
   }
-  if (!service) {
-    throw new NotFoundError("Service does not exist");
-  }
-
-  // Check if the user is authenticated to approve
-  if (userId !== service.user && user.userType !== "contractor") {
-    throw new UnauthenticatedError("You are not authenticated to approve");
-  }
-
-  // Check if the user is not the owner of the quote
-  if (userId === quote.user) {
-    throw new UnauthenticatedError("You cannot approve your own quote");
-  }
-
-  if (service.paid == false) {
-    throw new BadRequestError("Service has not been paid for");
-  }
-
-  // Approve the quote
-  const updatedQuote = await Quote.findOneAndUpdate(
-    { _id: quoteId },
-    { approve: true },
-    { runValidators: true, new: true }
-  );
-
-  // Update the service's contractor and amount
-  let updatedService;
-  if (user.userType === "contractor") {
-    // If a contractor approved the quote, save the contractor to the service
-    updatedService = await Service.findOneAndUpdate(
-      { _id: quote.service },
-      { amount: quote.estimatedCost, contractor: userId },
-      { runValidators: true, new: true }
-    );
-  } else if (userId === service.user) {
-    // If the service owner approved the quote, save the quote's user as the contractor
-    updatedService = await Service.findOneAndUpdate(
-      { _id: quote.service },
-      { amount: quote.estimatedCost, contractor: quote.user },
-      { runValidators: true, new: true }
-    );
-  }
-
-  res.status(StatusCodes.OK).json({ success: "Quote accepted" });
 };
 
 export const declineQuote = async (req, res) => {
-  const { quoteId } = req.params;
-  const { userId } = req.user;
+  try {
+    const { quoteId } = req.params;
+    const { userId } = req.user;
 
-  // Fetch the user and quote details
-  const user = await User.findOne({ _id: userId });
-  const quote = await Quote.findOne({ _id: quoteId });
+    // Fetch the user, quote, and service details
+    const user = await User.findById(userId);
+    const quote = await Quote.findById(quoteId);
+    const service = await Service.findById(quote.service);
 
-  // Validate existence of quote
-  if (!quote) {
-    throw new NotFoundError("Quote does not exist");
+    // Validate existence of user, quote, and service
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+    }
+    if (!quote) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
+    }
+    if (!service) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
+    }
+
+    // Ensure the user is the owner of the service
+    if (service.user.toString() !== userId.toString()) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Only the owner of the service can decline the quote" });
+    }
+
+    // Decline the quote
+    await Quote.findByIdAndDelete(quoteId);
+
+    // Respond with success message
+    return res.status(StatusCodes.OK).json({ success: "Quote declined" });
+  } catch (error) {
+    console.error("Error declining quote:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while declining the quote" });
   }
-
-  // Check if the user is authenticated to decline
-  if (userId !== quote.user && user.userType !== "contractor") {
-    throw new UnauthenticatedError("You are not authenticated to decline");
-  }
-
-  // Check if the user is not the owner of the quote
-  if (userId === quote.user) {
-    throw new UnauthenticatedError("You cannot decline your own quote");
-  }
-
-  // Fetch the service associated with the quote
-  const service = await Service.findOne({ _id: quote.service });
-
-  if (service.paid == false) {
-    throw new BadRequestError("Service has not been paid for");
-  }
-
-  // Check if the service has already been contracted
-  if (service.contractor) {
-    throw new UnauthenticatedError("Cannot decline the quote as the service has already been contracted");
-  }
-
-  // Decline the quote
-  const updatedQuote = await Quote.findOneAndUpdate(
-    { _id: quoteId },
-    { approve: false },
-    { runValidators: true, new: true }
-  );
-
-  res.status(StatusCodes.OK).json({ success: "Quote declined" });
 };

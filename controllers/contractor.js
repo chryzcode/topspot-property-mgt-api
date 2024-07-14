@@ -60,8 +60,8 @@ export const contractorApproveQuote = async (req, res) => {
 
     // Fetch the user, quote, and service details
     const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId);
-    const service = await Service.findById(quote.service);
+    const quote = await Quote.findById(quoteId).populate("service");
+    const service = quote.service;
 
     // Validate existence of user, quote, and service
     if (!user) {
@@ -86,6 +86,11 @@ export const contractorApproveQuote = async (req, res) => {
       return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
     }
 
+    // Ensure the contractor is assigned to the service
+    if (service.contractor.toString() !== userId.toString()) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only the assigned contractor can approve the quote" });
+    }
+
     // Check if the required availability details are provided
     if (!availableFromDate || !availableToDate || !availableFromTime || !availableToTime) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide all required availability details" });
@@ -104,7 +109,6 @@ export const contractorApproveQuote = async (req, res) => {
       quote.service,
       {
         amount: quote.estimatedCost,
-        contractor: userId,
         availableFromDate,
         availableToDate,
         availableFromTime,
@@ -126,6 +130,7 @@ export const contractorApproveQuote = async (req, res) => {
   }
 };
 
+
 export const contractorReplyQuote = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -135,7 +140,8 @@ export const contractorReplyQuote = async (req, res) => {
 
     // Fetch the user and quote details
     const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId);
+    const quote = await Quote.findById(quoteId).populate("service");
+    const service = quote.service;
 
     // Validate existence of user and quote
     if (!user) {
@@ -148,6 +154,11 @@ export const contractorReplyQuote = async (req, res) => {
     // Check if the user is a contractor
     if (user.userType !== "contractor") {
       throw new UnauthenticatedError("Only contractors can do this");
+    }
+
+    // Ensure the contractor is assigned to the service
+    if (service.contractor.toString() !== userId.toString()) {
+      throw new UnauthenticatedError("Only the assigned contractor can reply to the quote");
     }
 
     // Validate required fields

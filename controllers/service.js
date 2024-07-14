@@ -290,3 +290,55 @@ export const approveQuoteByOwner = async (req, res) => {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
   }
 };
+
+
+
+export const rejectQuoteByOwner = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { quoteId } = req.params;
+
+    // Fetch the user and quote details
+    const user = await User.findById(userId);
+    const quote = await Quote.findById(quoteId).populate("service");
+
+    // Validate existence of user and quote
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    if (!quote) {
+      throw new NotFoundError("Quote not found");
+    }
+
+    // Fetch the associated service
+    const service = quote.service;
+
+    // Validate existence of service
+    if (!service) {
+      throw new NotFoundError("Service not found");
+    }
+
+    // Check if the user is the owner of the service
+    if (service.user.toString() !== userId) {
+      throw new UnauthenticatedError("Only the owner of the service can reject this quote");
+    }
+
+    // Reject the quote and set the service status to pending
+    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: false }, { runValidators: true, new: true });
+
+    const updatedService = await Service.findByIdAndUpdate(
+      service._id,
+      { status: "pending" },
+      { runValidators: true, new: true }
+    );
+
+    res.status(StatusCodes.OK).json({
+      success: "Quote rejected successfully",
+      updatedQuote,
+      updatedService,
+    });
+  } catch (error) {
+    console.error("Error rejecting quote:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while rejecting the quote" });
+  }
+};

@@ -21,12 +21,6 @@ const serviceSchema = new mongoose.Schema(
       required: [true, "Please provide first name"],
     },
 
-    workScope: [
-      {
-        type: String,
-      },
-    ],
-
     categories: {
       type: [
         {

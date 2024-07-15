@@ -199,7 +199,7 @@ export const adminVerifyContractor = async (req, res) => {
     }
 
     // Check if the user is an admin
-    if (user.role !== "admin") {
+    if (user.userType !== "admin") {
       return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify contractor accounts" });
     }
 

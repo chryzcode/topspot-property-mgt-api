@@ -291,16 +291,16 @@ export const approveQuoteByOwner = async (req, res) => {
   }
 };
 
-
-
-export const rejectQuoteByOwner = async (req, res) => {
+export const ownerReplyQuote = async (req, res) => {
   try {
     const { userId } = req.user;
     const { quoteId } = req.params;
+    const { description, estimatedCost } = req.body;
 
     // Fetch the user and quote details
     const user = await User.findById(userId);
     const quote = await Quote.findById(quoteId).populate("service");
+    const service = quote.service;
 
     // Validate existence of user and quote
     if (!user) {
@@ -310,35 +310,29 @@ export const rejectQuoteByOwner = async (req, res) => {
       throw new NotFoundError("Quote not found");
     }
 
-    // Fetch the associated service
-    const service = quote.service;
-
-    // Validate existence of service
-    if (!service) {
-      throw new NotFoundError("Service not found");
+    // Ensure the contractor is assigned to the service
+    if (service.user.toString() !== userId.toString()) {
+      throw new UnauthenticatedError("Only the owner of the service can reply to the quote");
     }
 
-    // Check if the user is the owner of the service
-    if (service.user.toString() !== userId) {
-      throw new UnauthenticatedError("Only the owner of the service can reject this quote");
+    // Validate required fields
+    if (!description || !estimatedCost) {
+      throw new BadRequestError("Please provide all required fields: description, estimatedCost");
     }
 
-    // Reject the quote and set the service status to pending
-    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: false }, { runValidators: true, new: true });
-
-    const updatedService = await Service.findByIdAndUpdate(
-      service._id,
-      { status: "pending" },
-      { runValidators: true, new: true }
-    );
-
-    res.status(StatusCodes.OK).json({
-      success: "Quote rejected successfully",
-      updatedQuote,
-      updatedService,
+    // Create a new quote with updated information
+    const newQuote = await Quote.create({
+      user: userId,
+      service: quote.service,
+      description,
+      estimatedCost,
     });
+
+    res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
   } catch (error) {
-    console.error("Error rejecting quote:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while rejecting the quote" });
+    console.error("Error creating counter offer quote:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: "An error occurred while creating the counter offer quote" });
   }
 };

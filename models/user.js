@@ -58,6 +58,10 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    city: {
+      type: String,
+    },
+
     postalCode: {
       type: String,
     },
@@ -127,6 +131,13 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   const isMatch = await bcrypt.compare(candidatePassword, this.password);
   return isMatch;
 };
+
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password; // Exclude the password field
+    return ret;
+  },
+});
 
 const User = mongoose.model("User", userSchema);
 const Media = mongoose.model("Media", mediaSchema);

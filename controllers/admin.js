@@ -232,6 +232,29 @@ export const adminVerifyContractor = async (req, res) => {
 };
 
 
+export const deleteContractorAccount = async (req, res) => {
+  try {
+    const { contractorId } = req.params;
+
+    // Find the contractor account
+    const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
+
+    // Check if contractor account exists
+    if (!contractor) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
+    }
+
+    // Delete the contractor account
+    await User.deleteOne({ _id: contractorId });
+
+    // Respond with success message
+    return res.status(StatusCodes.OK).json({ message: "Contractor account deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting contractor account:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  }
+};
+
 export const allContractors = async (req, res) => {
   const contractors = await User.find({ userType: "contractor" })
   res.status(StatusCodes.OK).json({ contractors });

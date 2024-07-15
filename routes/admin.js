@@ -10,6 +10,7 @@ import {
   adminApproveQuote,
   adminVerifyContractor,
   allContractors,
+  deleteContractorAccount,
 } from "../controllers/admin.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -27,5 +28,6 @@ router.route("/counter-offer/:quoteId").post(authenticateUser, admin, adminCreat
 router.route("/verify-contractor/:contractorId").post(authenticateUser, admin, adminVerifyContractor);
 router.route("/approve-quote/:quoteId").post(authenticateUser, admin, adminApproveQuote);
 router.route("/all-contractors").get(authenticateUser, admin, allContractors);
+router.route("/delete-contractor/:contractorId").delete(authenticateUser, admin, deleteContractorAccount);
 
 export default router;

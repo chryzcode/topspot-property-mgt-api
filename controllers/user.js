@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import cloudinary from "cloudinary";
 import bcrypt from "bcryptjs";
 import multer from "multer";
+import nodemailer from "nodemailer";
 
 cloudinary.v2.config(process.env.CLOUDINARY_URL);
 
@@ -72,67 +73,43 @@ export const logout = async (req, res) => {
   res.status(StatusCodes.OK).json({ success: "Successfully logged out" });
 };
 
+
+
 export const signUp = async (req, res) => {
   try {
-    const user = await User.create({ ...req.body });
-    const token = user.createJWT();
-    const domain = process.env.DOMAIN;
-    const linkVerificationtoken = user.generateVerificationToken(); // Generate verification token method
-
-    if (user.userType === "contractor") {
-      res.status(StatusCodes.CREATED).json({
-        user,
-        token,
-        msg: "Account will be verified by an admin.",
-      });
-      return;
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
     }
 
+    const user = await User.create({ ...req.body });
     const maildata = {
       from: process.env.Email_User,
       to: user.email,
       subject: `${user.firstName}, verify your account`,
-      html: `
-        <p>Hi ${user.firstName},</p>
-        <p>Thank you for signing up. Please use the following <a href="${domain}/auth/verify-account/${
-        user.id
-      }/${encodeURIComponent(linkVerificationtoken)}">link</a> to verify your account. Link expires in 10 mins.</p>
-        <p>Best regards,<br/>Your Company</p>
-      `,
-      text: `Hi ${
-        user.firstName
-      },\n\nThank you for signing up. Please use the following link to verify your account: ${domain}/auth/verify-account/${
-        user.id
-      }/${encodeURIComponent(linkVerificationtoken)}. Link expires in 10 mins.\n\nBest regards,\nYour Company`,
+      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
+        linkVerificationtoken
+      )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
     };
 
-    // Set up nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.Email_User,
-        pass: process.env.Email_Password,
-      },
-    });
-
-    // Send email
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error);
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email." });
-      }
-      console.log("Email sent:", info.response);
-      res.status(StatusCodes.CREATED).json({
-        user,
-        token,
-        msg: "Check your email for account verification",
+    if (user.userType === "contractor") {
+      return res.status(StatusCodes.OK).json({ user, message: "Account will be verified by admin" });
+    } else {
+      transporter.sendMail(maildata, (error, info) => {
+        if (error) {
+          return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+        }
+        const token = user.createJWT();
+        return res.status(StatusCodes.CREATED).json({
+          user,
+          token,
+          message: "Check your email for account verification",
+        });
       });
-    });
+    }
   } catch (error) {
     console.error("Error during sign-up:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Sign-up failed." });
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
   }
 };
 
@@ -178,48 +155,62 @@ export const getUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { userId } = req.user;
-  let user = await User.findOne({ _id: userId });
 
+  // Find the user
+  let user = await User.findOne({ _id: userId });
   if (!user) {
     throw new NotFoundError("User does not exist");
   }
 
-  if (req.file) {
+  // Handle avatar upload if file is present
+  if (req.avatar) {
     try {
-      const result = await cloudinary.v2.uploader.upload_stream(
-        {
-          folder: "Topspot/User/Avatar/",
-          use_filename: true,
-        },
-        (error, result) => {
-          if (error) {
-            console.error(error);
-            throw new BadRequestError({ "error uploading image on cloudinary": error });
-          } else {
-            req.body.avatar = result.url;
-            updateUserDetails(req, res, userId);
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "Topspot/User/Avatar/",
+            use_filename: true,
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
           }
-        }
-      );
+        );
+        req.avatar.stream.pipe(uploadStream);
+      });
 
-      req.file.stream.pipe(result);
+      req.body.avatar = result.url;
     } catch (error) {
       console.error(error);
       throw new BadRequestError({ "error uploading image on cloudinary": error });
     }
-  } else {
-    updateUserDetails(req, res, userId);
   }
-};
 
-const updateUserDetails = async (req, res, userId) => {
-  const user = await User.findOneAndUpdate({ _id: userId }, req.body, {
+  // Handle password change if current password and new password are provided
+  if (req.body.currentPassword && req.body.newPassword) {
+    const isMatch = await user.comparePassword(req.body.currentPassword);
+    if (!isMatch) {
+      throw new UnauthorizedError("Current password is incorrect");
+    }
+    req.body.password = await bcrypt.hash(req.body.newPassword, 12);
+    delete req.body.currentPassword;
+    delete req.body.newPassword;
+  }
+
+  // Update user details
+  user = await User.findOneAndUpdate({ _id: userId }, req.body, {
     new: true,
     runValidators: true,
   });
 
   res.status(StatusCodes.OK).json({ user });
 };
+
+
+
 export const deleteUser = async (req, res) => {
   const { userId } = req.user;
   const user = await User.findOneAndUpdate({ _id: userId }, { verified: false }, { new: true, runValidators: true });

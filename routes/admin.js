@@ -9,6 +9,7 @@ import {
   adminCreateCounterOffer,
   adminApproveQuote,
   adminVerifyContractor,
+  allContractors,
 } from "../controllers/admin.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -22,8 +23,9 @@ router.route("/downgrade-to-tenant/:userId").post(authenticateUser, admin, downg
 router.route("/get-all-services").get(authenticateUser, admin, getAllServices);
 router.route("/get-service-quotes/:serviceId").get(authenticateUser, admin, getServiceQuotes);
 router.route("/filter-services-monthly").get(authenticateUser, admin, filterServicesMonthly);
-router.route("/counter-offer/:quoteId").get(authenticateUser, admin, adminCreateCounterOffer);
+router.route("/counter-offer/:quoteId").post(authenticateUser, admin, adminCreateCounterOffer);
 router.route("/verify-contractor/:contractorId").post(authenticateUser, admin, adminVerifyContractor);
 router.route("/approve-quote/:quoteId").post(authenticateUser, admin, adminApproveQuote);
+router.route("/all-contractors").get(authenticateUser, admin, allContractors);
 
 export default router;

@@ -21,6 +21,6 @@ router.route("/edit-service/:serviceId").put(authenticateUser, editService);
 router.route("/complete-service/:serviceId").post(authenticateUser, completeService);
 router.route("/search-service").get(authenticateUser, searchServices);
 router.route("/approve-quote/:quoteId").get(authenticateUser, approveQuoteByOwner);
-router.route("/reject-quote/:quoteId").get(authenticateUser, ownerReplyQuote);
+router.route("/reply-quote/:quoteId").post(authenticateUser, ownerReplyQuote);
 
 export default router;

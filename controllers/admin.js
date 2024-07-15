@@ -90,7 +90,7 @@ export const adminCreateCounterOffer = async (req, res) => {
     }
 
     // Check if the user is an admin
-    if (user.role !== "admin") {
+    if (user.userType !== "admin") {
       throw new UnauthenticatedError("Only admins can create a counter offer quote");
     }
 
@@ -121,10 +121,16 @@ export const adminApproveQuote = async (req, res) => {
   try {
     const { quoteId } = req.params;
     const { userId } = req.user;
+    const { contractorId } = req.body
+    
+    if (!contractorId) {
+      throw new BadRequestError("Please provide the contractorId");
+    }
 
     // Fetch the user, quote, and service details
     const user = await User.findById(userId);
     const quote = await Quote.findById(quoteId).populate("service");
+    const contractor = await User.findOne({_id: contractorId, userType: "contractor"})
 
     // Validate existence of user, quote, and service
     if (!user) {
@@ -137,10 +143,13 @@ export const adminApproveQuote = async (req, res) => {
       return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
     }
 
-    // Ensure that only admin can approve
-    if (user.role !== "admin") {
-      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
+    if (!contractor) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
     }
+      if (user.userType !== "admin") {
+        // Ensure that only admin can approve
+        return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
+      }
 
     // Ensure the user is not the owner of the quote or service
     if (userId === quote.user.toString()) {
@@ -158,7 +167,7 @@ export const adminApproveQuote = async (req, res) => {
     // Update the service's contractor, amount, and description
     const updateData = {
       amount: quote.estimatedCost,
-      contractor: quote.user,
+      contractor,
       description: quote.description,
     };
 
@@ -221,3 +230,9 @@ export const adminVerifyContractor = async (req, res) => {
       .json({ error: "An error occurred while verifying the contractor account" });
   }
 };
+
+
+export const allContractors = async (req, res) => {
+  const contractors = await User.find({ userType: "contractor" })
+  res.status(StatusCodes.OK).json({ contractors });
+}

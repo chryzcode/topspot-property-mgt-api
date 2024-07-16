@@ -42,7 +42,7 @@ export const contractorServices = async (req, res) => {
 
 export const completedServices = async (req, res) => {
   const { userId } = req.user;
-  const services = await Service.find({ contractor: userId, status: completed });
+  const services = await Service.find({ contractor: userId, status: "completed" });
   res.status(StatusCodes.OK).json({ services });
 };
 

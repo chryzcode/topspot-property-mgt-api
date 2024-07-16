@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.route("/contractor-services").get(authenticateUser, authenticateContractor, contractorServices);
 router.route("/completed-services").get(authenticateUser, authenticateContractor, completedServices);
-router.route("/all-contractor-services").post(authenticateUser, authenticateContractor, allContractorServices);
+router.route("/all-contractor-services").get(authenticateUser, authenticateContractor, allContractorServices);
 router.route("/approve-quote/:quoteId").post(authenticateUser, authenticateContractor, contractorApproveQuote);
 router.route("/reply-quote/:quoteId").post(authenticateUser, authenticateContractor, contractorReplyQuote);
 

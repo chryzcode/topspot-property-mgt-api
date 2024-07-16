@@ -60,9 +60,9 @@ export const signIn = async (req, res) => {
     }
   }
 
-  // if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
-  //   throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
-  // }
+  if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
+    throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
+  }
 
   let token = user.createJWT();
   await User.findOneAndUpdate({ _id: user._id }, { token: token });
@@ -161,7 +161,7 @@ export const updateUser = async (req, res) => {
   }
 
   // Handle avatar upload if file is present
-  if (req.avatar) {
+  if (req.body.avatar) {
     try {
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
@@ -187,7 +187,7 @@ export const updateUser = async (req, res) => {
     }
   }
 
-  // Handle password change if current password and new password are provided
+  // Handle password change if currentPassword and newPassword are provided
   if (req.body.currentPassword && req.body.newPassword) {
     const isMatch = await user.comparePassword(req.body.currentPassword);
     if (!isMatch) {

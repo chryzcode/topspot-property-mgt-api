@@ -11,6 +11,7 @@ import {
   adminVerifyContractor,
   allContractors,
   deleteContractorAccount,
+  allUsers,
 } from "../controllers/admin.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -29,5 +30,6 @@ router.route("/verify-contractor/:contractorId").post(authenticateUser, admin, a
 router.route("/approve-quote/:quoteId").post(authenticateUser, admin, adminApproveQuote);
 router.route("/all-contractors").get(authenticateUser, admin, allContractors);
 router.route("/delete-contractor/:contractorId").delete(authenticateUser, admin, deleteContractorAccount);
+router.route("/all-users").get(authenticateUser, admin, allUsers);
 
 export default router;

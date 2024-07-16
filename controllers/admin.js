@@ -218,7 +218,7 @@ export const adminVerifyContractor = async (req, res) => {
     }
 
     // Verify the contractor's account
-    contractor.verified = true;
+    contractor.contractorAccountStatus = "active";
     await contractor.save();
 
     // Respond with success message

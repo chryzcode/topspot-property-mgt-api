@@ -218,7 +218,7 @@ export const adminVerifyContractor = async (req, res) => {
     }
 
     // Verify the contractor's account
-    contractor.verified = true;
+    contractor.contractorAccountStatus = "active";
     await contractor.save();
 
     // Respond with success message
@@ -256,6 +256,32 @@ export const deleteContractorAccount = async (req, res) => {
 };
 
 export const allContractors = async (req, res) => {
-  const contractors = await User.find({ userType: "contractor" })
-  res.status(StatusCodes.OK).json({ contractors });
-}
+  try {
+    const contractors = await User.find({ userType: "contractor" });
+
+    // Iterate over each contractor to get their completed services count
+    const contractorsWithServiceCount = await Promise.all(
+      contractors.map(async contractor => {
+        const completedServicesCount = await Service.countDocuments({
+          contractor: contractor._id,
+          status: "completed", // Ensure the status is a string
+        });
+        return {
+          ...contractor.toObject(), // Convert Mongoose document to plain JavaScript object
+          completedServicesCount,
+        };
+      })
+    );
+
+    res.status(StatusCodes.OK).json({ contractors: contractorsWithServiceCount });
+  } catch (error) {
+    console.error("Error fetching contractors:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  }
+};
+
+
+export const allUsers = async (req, res) => {
+  const users = await User.find({});
+  res.status(StatusCodes.OK).json({ users });
+};

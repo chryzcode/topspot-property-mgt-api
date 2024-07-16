@@ -36,7 +36,7 @@ export const signIn = async (req, res) => {
     throw new UnauthenticatedError("Invalid password");
   }
 
-  if (user.verified == false) {
+  if (!user.verified) {
     if (user.userType === "contractor") {
       throw new UnauthenticatedError("Account is not approved yet.");
     } else {
@@ -60,6 +60,10 @@ export const signIn = async (req, res) => {
     }
   }
 
+  // if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
+  //   throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
+  // }
+
   let token = user.createJWT();
   await User.findOneAndUpdate({ _id: user._id }, { token: token });
   token = user.token;
@@ -72,8 +76,6 @@ export const logout = async (req, res) => {
   await User.findOneAndUpdate({ _id: userId }, req.body);
   res.status(StatusCodes.OK).json({ success: "Successfully logged out" });
 };
-
-
 
 export const signUp = async (req, res) => {
   try {
@@ -92,21 +94,17 @@ export const signUp = async (req, res) => {
       )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
     };
 
-    if (user.userType === "contractor") {
-      return res.status(StatusCodes.OK).json({ user, message: "Account will be verified by admin" });
-    } else {
-      transporter.sendMail(maildata, (error, info) => {
-        if (error) {
-          return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-        }
-        const token = user.createJWT();
-        return res.status(StatusCodes.CREATED).json({
-          user,
-          token,
-          message: "Check your email for account verification",
-        });
+    transporter.sendMail(maildata, (error, info) => {
+      if (error) {
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+      }
+      const token = user.createJWT();
+      return res.status(StatusCodes.CREATED).json({
+        user,
+        token,
+        message: "Check your email for account verification",
       });
-    }
+    });
   } catch (error) {
     console.error("Error during sign-up:", error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
@@ -208,8 +206,6 @@ export const updateUser = async (req, res) => {
 
   res.status(StatusCodes.OK).json({ user });
 };
-
-
 
 export const deleteUser = async (req, res) => {
   const { userId } = req.user;

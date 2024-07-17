@@ -137,12 +137,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return isMatch;
 };
 
-userSchema.set("toJSON", {
-  transform: (doc, ret) => {
-    delete ret.password; // Exclude the password field
-    return ret;
-  },
-});
+// userSchema.set("toJSON", {
+//   transform: (doc, ret) => {
+//     delete ret.password; // Exclude the password field
+//     return ret;
+//   },
+// });
 
 const User = mongoose.model("User", userSchema);
 const Media = mongoose.model("Media", mediaSchema);

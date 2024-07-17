@@ -3,24 +3,26 @@ import { UnauthenticatedError } from "../errors/index.js";
 import { User } from "../models/user.js";
 
 export default async (req, res, next) => {
-  // check header
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer")) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new UnauthenticatedError("Authentication invalid");
   }
   const token = authHeader.split(" ")[1];
-  const user = await User.findOne({ token: token, verified: true });
-  if (user) {
-    try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      // attach the user to the job routes
-      req.user = { userId: payload.userId, firstName: payload.firstName, lastName: payload.lastName };
 
-      next();
-    } catch (error) {
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Find the user with the provided token and verified status
+    const user = await User.findOne({ _id: payload.userId, token: token, verified: true });
+    if (!user) {
       throw new UnauthenticatedError("Authentication invalid");
     }
-  } else {
+
+    // Attach the user to the job routes
+    req.user = { userId: user._id, firstName: user.firstName, lastName: user.lastName };
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
     throw new UnauthenticatedError("Authentication invalid");
   }
 };

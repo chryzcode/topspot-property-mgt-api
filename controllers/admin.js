@@ -285,3 +285,45 @@ export const allUsers = async (req, res) => {
   const users = await User.find({});
   res.status(StatusCodes.OK).json({ users });
 };
+
+
+
+export const createTenantAccount = async (req, res) => {
+  try {
+    // Check if the requesting user is an admin
+    if (req.user.userType !== "admin") {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can create tenant accounts" });
+    }
+
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
+
+    const user = await User.create({ ...req.body, userType: "tenant"});
+
+    res.status(StatusCodes.CREATED).json({
+      user,
+      message: "Tenant account created successfully",
+    });
+  } catch (error) {
+    console.error("Error during tenant account creation:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  }
+};
+
+
+export const getUserProfile = async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId).select("-password -token");
+
+  if (!user) {
+    throw new NotFoundError(`User with id ${userId} does not exist`);
+  }
+
+  res.status(StatusCodes.OK).json({ user });
+};

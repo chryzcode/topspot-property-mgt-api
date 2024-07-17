@@ -23,14 +23,17 @@ const linkVerificationtoken = generateToken(uniqueID);
 
 export const signIn = async (req, res) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
     throw new BadRequestError("Put in your email and password");
   }
+
   const user = await User.findOne({ email: email });
 
   if (!user) {
     throw new UnauthenticatedError("User does not exist");
   }
+
   const passwordMatch = await user.comparePassword(password);
   if (!passwordMatch) {
     throw new UnauthenticatedError("Invalid password");
@@ -39,24 +42,27 @@ export const signIn = async (req, res) => {
   if (!user.verified) {
     if (user.userType === "contractor") {
       throw new UnauthenticatedError("Account is not approved yet.");
-    } else {
+    } else if (user.userType === "tenant") {
+      const linkVerificationtoken = user.createJWT();
       const maildata = {
         from: process.env.Email_User,
         to: user.email,
-        subject: `${user.firstName} verify your account`,
-        html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
+        subject: `${user.firstName}, reset your password`,
+        html: `<p>Please use the following <a href="${domain}/auth/forgot-password/${user._id}/${encodeURIComponent(
           linkVerificationtoken
-        )}">link</a> to verify your account. Link expires in 10 mins.</p>`,
+        )}">link</a> to reset your password. The link expires in 10 mins.</p>`,
       };
+
       transporter.sendMail(maildata, (error, info) => {
         if (error) {
           console.log(error);
-          res.status(StatusCodes.BAD_REQUEST).send();
+          return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send password reset email" });
         }
         console.log(info);
-        res.status(StatusCodes.OK).send();
+        return res.status(StatusCodes.OK).json({ message: "Check your email to reset your password" });
       });
-      throw new UnauthenticatedError("Account is not verified, kindly check your mail for verification");
+
+      throw new UnauthenticatedError("Account is not verified, kindly check your mail for password reset.");
     }
   }
 
@@ -67,6 +73,7 @@ export const signIn = async (req, res) => {
   let token = user.createJWT();
   await User.findOneAndUpdate({ _id: user._id }, { token: token });
   token = user.token;
+
   res.status(StatusCodes.OK).json({ user, token });
 };
 
@@ -79,10 +86,20 @@ export const logout = async (req, res) => {
 
 export const signUp = async (req, res) => {
   try {
+    // Prevent creation of tenant accounts through sign-up
+    if (req.body.userType && req.body.userType === "tenant") {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ error: "You are not allowed to create a tenant account through sign-up" });
+    }
+
     const existingUser = await User.findOne({ email: req.body.email });
     if (existingUser) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
     }
+
+    const salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
 
     const user = await User.create({ ...req.body });
     const maildata = {
@@ -191,12 +208,14 @@ export const updateUser = async (req, res) => {
   if (req.body.currentPassword && req.body.newPassword) {
     const isMatch = await user.comparePassword(req.body.currentPassword);
     if (!isMatch) {
-      throw new UnauthorizedError("Current password is incorrect");
+      throw new UnauthenticatedError("Current password is incorrect");
     }
-    req.body.password = await bcrypt.hash(req.body.newPassword, 12);
+    const salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
     delete req.body.currentPassword;
     delete req.body.newPassword;
   }
+
 
   // Update user details
   user = await User.findOneAndUpdate({ _id: userId }, req.body, {

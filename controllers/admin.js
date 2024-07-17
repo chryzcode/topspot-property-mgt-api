@@ -3,6 +3,7 @@ import { Service } from "../models/service.js";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import { Quote } from "../models/quote.js";
+import bcrypt from "bcryptjs";
 
 export const getTenantsAndHouseOwners = async (req, res) => {
   const tenantsAndHouseOwners = await User.find({ userType: "houseOwner" || "tenant", verified: true }).sort({
@@ -290,11 +291,7 @@ export const allUsers = async (req, res) => {
 
 export const createTenantAccount = async (req, res) => {
   try {
-    // Check if the requesting user is an admin
-    if (req.user.userType !== "admin") {
-      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can create tenant accounts" });
-    }
-
+   
     const existingUser = await User.findOne({ email: req.body.email });
     if (existingUser) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });

@@ -108,6 +108,22 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "active", "disabled"],
       default: "pending",
     },
+
+    contactNumber: {
+      type: Number,
+    },
+    secondaryContactNumber: {
+      type: Number,
+    },
+    leaseStartDate: {
+      type: String,
+    },
+    leaseEndDate: {
+      type: String,
+    },
+    leasePayment: {
+      type: String,
+    },
   },
 
   {
@@ -137,12 +153,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return isMatch;
 };
 
-// userSchema.set("toJSON", {
-//   transform: (doc, ret) => {
-//     delete ret.password; // Exclude the password field
-//     return ret;
-//   },
-// });
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret.password; // Exclude the password field
+    return ret;
+  },
+});
 
 const User = mongoose.model("User", userSchema);
 const Media = mongoose.model("Media", mediaSchema);

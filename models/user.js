@@ -108,6 +108,22 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "active", "disabled"],
       default: "pending",
     },
+
+    contactNumber: {
+      type: Number,
+    },
+    secondaryContactNumber: {
+      type: Number,
+    },
+    leaseStartDate: {
+      type: String,
+    },
+    leaseEndDate: {
+      type: String,
+    },
+    leasePayment: {
+      type: String,
+    },
   },
 
   {

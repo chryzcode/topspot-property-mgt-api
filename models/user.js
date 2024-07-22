@@ -78,6 +78,15 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    addressLine1: {
+      type: String,
+      required: [true, "Please provide address line 1"],
+    },
+
+    addressLine2: {
+      type: String,
+    },
+
     categories: {
       type: [
         {

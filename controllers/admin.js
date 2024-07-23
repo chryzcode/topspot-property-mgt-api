@@ -65,7 +65,6 @@ export const downgradeToTenant = async (req, res) => {
   res.status(StatusCodes.OK).json({ user });
 };
 
-
 export const adminCreateCounterOffer = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -117,13 +116,12 @@ export const adminCreateCounterOffer = async (req, res) => {
   }
 };
 
-
 export const adminApproveQuote = async (req, res) => {
   try {
     const { quoteId } = req.params;
     const { userId } = req.user;
-    const { contractorId } = req.body
-    
+    const { contractorId } = req.body;
+
     if (!contractorId) {
       throw new BadRequestError("Please provide the contractorId");
     }
@@ -131,7 +129,7 @@ export const adminApproveQuote = async (req, res) => {
     // Fetch the user, quote, and service details
     const user = await User.findById(userId);
     const quote = await Quote.findById(quoteId).populate("service");
-    const contractor = await User.findOne({_id: contractorId, userType: "contractor"})
+    const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
     // Validate existence of user, quote, and service
     if (!user) {
@@ -147,10 +145,10 @@ export const adminApproveQuote = async (req, res) => {
     if (!contractor) {
       return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
     }
-      if (user.userType !== "admin") {
-        // Ensure that only admin can approve
-        return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
-      }
+    if (user.userType !== "admin") {
+      // Ensure that only admin can approve
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
+    }
 
     // Ensure the user is not the owner of the quote or service
     if (userId === quote.user.toString()) {
@@ -189,7 +187,6 @@ export const adminApproveQuote = async (req, res) => {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
   }
 };
-
 
 export const adminVerifyContractor = async (req, res) => {
   try {
@@ -231,7 +228,6 @@ export const adminVerifyContractor = async (req, res) => {
       .json({ error: "An error occurred while verifying the contractor account" });
   }
 };
-
 
 export const deleteContractorAccount = async (req, res) => {
   try {
@@ -281,37 +277,27 @@ export const allContractors = async (req, res) => {
   }
 };
 
-
 export const allUsers = async (req, res) => {
   const users = await User.find({});
   res.status(StatusCodes.OK).json({ users });
 };
 
-
-
 export const createTenantAccount = async (req, res) => {
-  try {
-   
-    const existingUser = await User.findOne({ email: req.body.email });
-    if (existingUser) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    req.body.password = await bcrypt.hash(req.body.password, salt);
-
-    const user = await User.create({ ...req.body, userType: "tenant"});
-
-    res.status(StatusCodes.CREATED).json({
-      user,
-      message: "Tenant account created successfully",
-    });
-  } catch (error) {
-    console.error("Error during tenant account creation:", error);
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  const existingUser = await User.findOne({ email: req.body.email });
+  if (existingUser) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
-};
 
+  const salt = await bcrypt.genSalt(10);
+  req.body.password = await bcrypt.hash(req.body.password, salt);
+
+  const user = await User.create({ ...req.body, userType: "tenant" });
+
+  res.status(StatusCodes.CREATED).json({
+    user,
+    message: "Tenant account created successfully",
+  });
+};
 
 export const getUserProfile = async (req, res) => {
   const { userId } = req.params;

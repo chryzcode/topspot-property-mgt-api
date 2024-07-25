@@ -69,7 +69,7 @@ export const adminCreateCounterOffer = async (req, res) => {
   try {
     const { userId } = req.user;
     const { quoteId } = req.params;
-    const { description, estimatedCost } = req.body;
+    const { description, estimatedCost, currency } = req.body;
 
     // Fetch the user and quote details
     const user = await User.findById(userId);
@@ -105,6 +105,7 @@ export const adminCreateCounterOffer = async (req, res) => {
       service: service._id,
       description,
       estimatedCost,
+      currency:"usd",
     });
 
     res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });

@@ -66,55 +66,48 @@ export const downgradeToTenant = async (req, res) => {
 };
 
 export const adminCreateCounterOffer = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { quoteId } = req.params;
-    const { description, estimatedCost, currency } = req.body;
+  const { userId } = req.user;
+  const { quoteId } = req.params;
+  const { description, estimatedCost, currency } = req.body;
 
-    // Fetch the user and quote details
-    const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId).populate("service");
+  // Fetch the user and quote details
+  const user = await User.findById(userId);
+  const quote = await Quote.findById(quoteId).populate("service");
 
-    // Validate existence of user and quote
-    if (!user) {
-      throw new NotFoundError("User not found");
-    }
-    if (!quote) {
-      throw new NotFoundError("Quote not found");
-    }
-
-    // Fetch the associated service
-    const service = quote.service;
-    if (!service) {
-      throw new NotFoundError("Service not found");
-    }
-
-    // Check if the user is an admin
-    if (user.userType !== "admin") {
-      throw new UnauthenticatedError("Only admins can create a counter offer quote");
-    }
-
-    // Validate required fields
-    if (!description || !estimatedCost) {
-      throw new BadRequestError("Please provide all required fields");
-    }
-
-    // Create a new counter offer quote
-    const newQuote = await Quote.create({
-      user: userId,
-      service: service._id,
-      description,
-      estimatedCost,
-      currency:"usd",
-    });
-
-    res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
-  } catch (error) {
-    console.error("Error creating counter offer quote:", error);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: "An error occurred while creating the counter offer quote" });
+  // Validate existence of user and quote
+  if (!user) {
+    throw new NotFoundError("User not found");
   }
+  if (!quote) {
+    throw new NotFoundError("Quote not found");
+  }
+
+  // Fetch the associated service
+  const service = quote.service;
+  if (!service) {
+    throw new NotFoundError("Service not found");
+  }
+
+  // Check if the user is an admin
+  if (user.userType !== "admin") {
+    throw new UnauthenticatedError("Only admins can create a counter offer quote");
+  }
+
+  // Validate required fields
+  if (!description || !estimatedCost) {
+    throw new BadRequestError("Please provide all required fields");
+  }
+
+  // Create a new counter offer quote
+  const newQuote = await Quote.create({
+    user: userId,
+    service: service._id,
+    description,
+    estimatedCost,
+    currency: "usd",
+  });
+
+  res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
 };
 
 export const adminApproveQuote = async (req, res) => {
@@ -154,11 +147,6 @@ export const adminApproveQuote = async (req, res) => {
     // Ensure the user is not the owner of the quote or service
     if (userId === quote.user.toString()) {
       return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
-    }
-
-    // Ensure the service has been paid for
-    if (!quote.service.paid) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Service has not been paid for" });
     }
 
     // Approve the quote

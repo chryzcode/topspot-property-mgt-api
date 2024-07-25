@@ -96,11 +96,6 @@ export const contractorApproveQuote = async (req, res) => {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide all required availability details" });
     }
 
-    // Check if the service has been paid for
-    if (!service.paid) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Service has not been paid for" });
-    }
-
     // Approve the quote
     const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
 

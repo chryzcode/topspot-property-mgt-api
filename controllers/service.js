@@ -245,11 +245,6 @@ export const approveQuoteByOwner = async (req, res) => {
       throw new UnauthenticatedError("You are not authorized to approve this quote");
     }
 
-    // Check if the service has been paid for
-    if (!service.paid) {
-      throw new BadRequestError("Service has not been paid for");
-    }
-
     // Approve the quote
     const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
 

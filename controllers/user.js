@@ -17,7 +17,7 @@ const upload = multer({ storage });
 
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 const linkVerificationtoken = generateToken(uniqueID);
 
@@ -216,7 +216,6 @@ export const updateUser = async (req, res) => {
     delete req.body.newPassword;
   }
 
-
   // Update user details
   user = await User.findOneAndUpdate({ _id: userId }, req.body, {
     new: true,
@@ -242,43 +241,56 @@ export const sendForgotPasswordLink = async (req, res) => {
   }
   const user = await User.findOne({ email: email });
   if (!user) {
-    throw new NotFoundError("User does not exists");
+    throw new NotFoundError("User does not exist");
   }
+
+  const linkVerificationtoken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30m" });
+
   const maildata = {
     from: process.env.Email_User,
     to: user.email,
-    subject: `${user.firstName} you forgot your password`,
-    html: `<p>Please use the following <a href="${domain}/verify/forgot-password/${user.id}/${encodeURIComponent(
+    subject: `${user.firstName}, you forgot your password`,
+    html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=2&id=${
+      user.id
+    }&token=${encodeURIComponent(
       linkVerificationtoken
-    )}">link</a> for verification. Link expires in 30 mins.</p>`,
+    )}">link</a> to reset your password. The link expires in 30 minutes.</p>`,
   };
+
   transporter.sendMail(maildata, (error, info) => {
     if (error) {
       res.status(StatusCodes.BAD_REQUEST).send();
     }
-    res.status(StatusCodes.OK).json({ success: "Check you email to change your password" });
+    res.status(StatusCodes.OK).json({ success: "Check your email to change your password" });
   });
 };
 
-export const verifyForgotPasswordToken = async (req, res) => {
-  const token = req.params.token;
-  const userId = req.params.userId;
-  const secretKey = process.env.JWT_SECRET;
-  var { password } = req.body;
-  try {
-    jwt.verify(token, secretKey);
-    const salt = await bcrypt.genSalt(10);
-    password = await bcrypt.hash(password, salt);
-    const user = await User.findOneAndUpdate(
-      { _id: userId },
-      { password: password, token: token },
-      { runValidators: true, new: true }
-    );
+export const verifyForgotPasswordToken = async (req, res, next) => {
+  const { id, token } = req.query;
 
-    res.status(StatusCodes.OK).json({ user });
+  if (!id || !token) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Missing required query parameters" });
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (payload.userId !== id) {
+      throw new UnauthenticatedError("Token does not match the user ID");
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    req.user = user;
+    next();
   } catch (error) {
-    console.error("Token verification failed:", error);
-    res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
+    if (error.name === "TokenExpiredError") {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Token expired" });
+    } else {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Invalid token" });
+    }
   }
 };
 

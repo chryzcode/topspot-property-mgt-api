@@ -267,9 +267,14 @@ export const sendForgotPasswordLink = async (req, res) => {
 
 export const verifyForgotPasswordToken = async (req, res, next) => {
   const { id, token } = req.query;
+  const { password } = req.body;
 
   if (!id || !token) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "Missing required query parameters" });
+  }
+
+  if (!password) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Password is required" });
   }
 
   try {
@@ -283,8 +288,11 @@ export const verifyForgotPasswordToken = async (req, res, next) => {
       throw new NotFoundError("User not found");
     }
 
-    req.user = user;
-    next();
+    // Update the user's password
+    user.password = password;
+    await user.save();
+
+    return res.status(StatusCodes.OK).json({ user });
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Token expired" });

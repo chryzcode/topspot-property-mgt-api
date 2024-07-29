@@ -53,6 +53,6 @@ router.route("/update").put(authenticateUser, updateUser);
 router.route("/delete").delete(authenticateUser, deleteUser);
 router.route("/send-forgot-password-link").post(sendForgotPasswordLink);
 router.route("/auth/forgot-password").post(verifyForgotPasswordToken);
-router.route("/auth/verify-account/:userId/:token").get(verifyAccount);
+router.route("/auth/verify-account").get(verifyAccount);
 
 export default router;

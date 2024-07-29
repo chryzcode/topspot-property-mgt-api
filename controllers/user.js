@@ -48,7 +48,9 @@ export const signIn = async (req, res) => {
         from: process.env.Email_User,
         to: user.email,
         subject: `${user.firstName}, reset your password`,
-        html: `<p>Please use the following <a href="${domain}/auth/forgot-password/${user._id}/${encodeURIComponent(
+        html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
+          user.id
+        }&token=${encodeURIComponent(
           linkVerificationtoken
         )}">link</a> to reset your password. The link expires in 10 mins.</p>`,
       };
@@ -106,7 +108,9 @@ export const signUp = async (req, res) => {
       from: process.env.Email_User,
       to: user.email,
       subject: `${user.firstName}, verify your account`,
-      html: `<p>Please use the following <a href="${domain}/auth/verify-account/${user.id}/${encodeURIComponent(
+      html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
+        user.id
+      }&token=${encodeURIComponent(
         linkVerificationtoken
       )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
     };

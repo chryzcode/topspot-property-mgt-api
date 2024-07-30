@@ -21,7 +21,6 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 const linkVerificationtoken = generateToken(uniqueID);
 
-
 export const signIn = async (req, res) => {
   const { email, password } = req.body;
 
@@ -133,8 +132,6 @@ export const signUp = async (req, res) => {
   }
 };
 
-
-
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
@@ -145,7 +142,7 @@ export const verifyAccount = async (req, res) => {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
   }
 
-  console.log(token)
+  console.log(token);
 
   // Check if token and userId are provided
   if (!token) {
@@ -170,10 +167,10 @@ export const verifyAccount = async (req, res) => {
     }
 
     // Redirect to the desired route after successful verification
-    res.redirect(`${FRONTEND_URL}/register/onboarding`);
+    res.status(StatusCodes.OK).json({ success: "Account verified successfully" });
   } catch (error) {
     console.error("Token verification failed:", error);
-    res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid or expired token" });
+    res.status(StatusCodes.BAD_REQUEST).json({ error: error });
   }
 };
 

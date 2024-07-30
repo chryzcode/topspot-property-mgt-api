@@ -35,16 +35,11 @@ export const userServices = async (req, res) => {
   const pageNumber = parseInt(page) || 0;
   const pageSize = parseInt(limit) || 10;
 
-  try {
-    const services = await Service.find(query)
-      .sort({ createdAt: -1 })
-      .skip(pageNumber * pageSize)
-      .limit(pageSize);
-    res.status(StatusCodes.OK).json({ services });
-  } catch (error) {
-    console.error("Error fetching user services:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
-  }
+  const services = await Service.find(query)
+    .sort({ createdAt: -1 })
+    .skip(pageNumber * pageSize)
+    .limit(pageSize);
+  res.status(StatusCodes.OK).json({ services });
 };
 
 export const cancelService = async (req, res) => {
@@ -77,94 +72,82 @@ export const searchServices = async (req, res) => {
   limit = parseInt(limit) || 10;
   name = name ? name.toLowerCase() : null;
 
-  try {
-    let query = {};
+  let query = {};
 
-    // Add search conditions based on provided parameters
-    if (category) {
-      query.categories = { $regex: new RegExp(category, "i") };
-    }
-
-    if (location) {
-      // Split location into words and search for each word in the location field
-      const locationWords = location.split(" ");
-      query.location = {
-        $regex: new RegExp(locationWords.join("|"), "i"),
-      };
-    }
-
-    if (name) {
-      query.name = { $regex: new RegExp(name, "i") };
-    }
-
-    if (date) {
-      if (!isNaN(date.getTime())) {
-        query.$or = [{ availableFromDate: { $gte: date } }, { availableToDate: { $gte: date } }];
-      } else {
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
-      }
-    }
-
-    if (priceMin !== null && priceMax !== null) {
-      query.amount = { $gte: priceMin, $lte: priceMax };
-    } else if (priceMin !== null) {
-      query.amount = { $gte: priceMin };
-    } else if (priceMax !== null) {
-      query.amount = { $lte: priceMax };
-    }
-
-    // Execute the query with pagination
-    const services = await Service.find(query)
-      .sort({ createdAt: -1 })
-      .skip(page * limit)
-      .limit(limit);
-
-    res.status(StatusCodes.OK).json({ services });
-  } catch (error) {
-    console.error("Error searching services:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
+  // Add search conditions based on provided parameters
+  if (category) {
+    query.categories = { $regex: new RegExp(category, "i") };
   }
+
+  if (location) {
+    // Split location into words and search for each word in the location field
+    const locationWords = location.split(" ");
+    query.location = {
+      $regex: new RegExp(locationWords.join("|"), "i"),
+    };
+  }
+
+  if (name) {
+    query.name = { $regex: new RegExp(name, "i") };
+  }
+
+  if (date) {
+    if (!isNaN(date.getTime())) {
+      query.$or = [{ availableFromDate: { $gte: date } }, { availableToDate: { $gte: date } }];
+    } else {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Invalid date format" });
+    }
+  }
+
+  if (priceMin !== null && priceMax !== null) {
+    query.amount = { $gte: priceMin, $lte: priceMax };
+  } else if (priceMin !== null) {
+    query.amount = { $gte: priceMin };
+  } else if (priceMax !== null) {
+    query.amount = { $lte: priceMax };
+  }
+
+  // Execute the query with pagination
+  const services = await Service.find(query)
+    .sort({ createdAt: -1 })
+    .skip(page * limit)
+    .limit(limit);
+
+  res.status(StatusCodes.OK).json({ services });
 };
 
 export const createService = async (req, res) => {
-  try {
-    req.body.user = req.user.userId;
-    const { media, description, amount } = req.body;
+  req.body.user = req.user.userId;
+  const { media, description, amount } = req.body;
 
-    // Upload media files to Cloudinary if they exist
-    if (media && media.length > 0) {
-      for (let i = 0; i < media.length; i++) {
-        const result = await cloudinary.v2.uploader.upload(media[i].url, {
-          folder: "Topspot/Services/Media/",
-          use_filename: true,
-        });
-        media[i].url = result.url; // Replace media URL with Cloudinary URL
-      }
+  // Upload media files to Cloudinary if they exist
+  if (media && media.length > 0) {
+    for (let i = 0; i < media.length; i++) {
+      const result = await cloudinary.v2.uploader.upload(media[i].url, {
+        folder: "Topspot/Services/Media/",
+        use_filename: true,
+      });
+      media[i].url = result.url; // Replace media URL with Cloudinary URL
     }
-
-    // Create service in the database
-    let service = await Service.create({ ...req.body });
-
-    // Create a quote for the newly created service
-    const quote = await Quote.create({
-      user: req.user.userId,
-      service: service._id,
-      description: description,
-      estimatedCost: amount,
-    });
-
-    // Optionally, populate additional data from the created service and quote
-    service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
-    const populatedQuote = await Quote.findOne({ _id: quote._id }).populate("user", "fullName avatar userType _id");
-
-    // Respond with the created service and quote
-    res.status(StatusCodes.OK).json({ service, quote: populatedQuote });
-  } catch (error) {
-    console.error("Error creating service and quote:", error);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: "An error occurred while creating the service and quote" });
   }
+
+  // Create service in the database
+  let service = await Service.create({ ...req.body });
+
+  // Create a quote for the newly created service
+  const quote = await Quote.create({
+    user: req.user.userId,
+    service: service._id,
+    description: description,
+    estimatedCost: amount,
+  });
+
+  // Optionally, populate additional data from the created service and quote
+  service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
+  const populatedQuote = await Quote.findOne({ _id: quote._id }).populate("user", "fullName avatar userType _id");
+
+  // Respond with the created service and quote
+  res.status(StatusCodes.OK).json({ service, quote: populatedQuote });
 };
 
 export const editService = async (req, res) => {
@@ -226,108 +209,96 @@ export const approveQuoteByOwner = async (req, res) => {
   const { quoteId } = req.params;
   const { userId } = req.user;
 
-  try {
-    // Fetch the user, quote, and service details
-    const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId);
-    const service = await Service.findById(quote.service);
+  // Fetch the user, quote, and service details
+  const user = await User.findById(userId);
+  const quote = await Quote.findById(quoteId);
+  const service = await Service.findById(quote.service);
 
-    // Validate existence of quote and service
-    if (!quote) {
-      throw new NotFoundError("Quote does not exist");
-    }
-    if (!service) {
-      throw new NotFoundError("Service does not exist");
-    }
-
-    // Check if the user is the owner of the service
-    if (service.user.toString() !== userId.toString()) {
-      throw new UnauthenticatedError("You are not authorized to approve this quote");
-    }
-
-    // Approve the quote
-    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
-
-    // Prepare the update data for the service
-    const updateData = {
-      amount: quote.estimatedCost,
-      description: quote.description,
-      status: "ongoing",
-    };
-
-    // Update the availability details if provided in the quote
-    if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
-    if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
-    if (quote.availableFromTime) {
-      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-      if (!timeRegex.test(quote.availableFromTime)) {
-        throw new BadRequestError("Please provide a valid available from time in HH:mm format");
-      }
-      updateData.availableFromTime = quote.availableFromTime;
-    }
-    if (quote.availableToTime) {
-      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-      if (!timeRegex.test(quote.availableToTime)) {
-        throw new BadRequestError("Please provide a valid available to time in HH:mm format");
-      }
-      updateData.availableToTime = quote.availableToTime;
-    }
-
-    // Update the service with the approved quote details
-    const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
-      runValidators: true,
-      new: true,
-    });
-
-    res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
-  } catch (error) {
-    console.error("Error approving quote:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
+  // Validate existence of quote and service
+  if (!quote) {
+    throw new NotFoundError("Quote does not exist");
   }
+  if (!service) {
+    throw new NotFoundError("Service does not exist");
+  }
+
+  // Check if the user is the owner of the service
+  if (service.user.toString() !== userId.toString()) {
+    throw new UnauthenticatedError("You are not authorized to approve this quote");
+  }
+
+  // Approve the quote
+  const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+
+  // Prepare the update data for the service
+  const updateData = {
+    amount: quote.estimatedCost,
+    description: quote.description,
+    status: "ongoing",
+  };
+
+  // Update the availability details if provided in the quote
+  if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+  if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+  if (quote.availableFromTime) {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(quote.availableFromTime)) {
+      throw new BadRequestError("Please provide a valid available from time in HH:mm format");
+    }
+    updateData.availableFromTime = quote.availableFromTime;
+  }
+  if (quote.availableToTime) {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(quote.availableToTime)) {
+      throw new BadRequestError("Please provide a valid available to time in HH:mm format");
+    }
+    updateData.availableToTime = quote.availableToTime;
+  }
+
+  // Update the service with the approved quote details
+  const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
+    runValidators: true,
+    new: true,
+  });
+
+  res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
 };
 
 export const ownerReplyQuote = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { quoteId } = req.params;
-    const { description, estimatedCost } = req.body;
+  const { userId } = req.user;
+  const { quoteId } = req.params;
+  const { description, estimatedCost } = req.body;
 
-    // Fetch the user and quote details
-    const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId).populate("service");
-    const service = quote.service;
+  // Fetch the user and quote details
+  const user = await User.findById(userId);
+  const quote = await Quote.findById(quoteId).populate("service");
+  const service = quote.service;
 
-    // Validate existence of user and quote
-    if (!user) {
-      throw new NotFoundError("User not found");
-    }
-    if (!quote) {
-      throw new NotFoundError("Quote not found");
-    }
-
-    // Ensure the contractor is assigned to the service
-    if (service.user.toString() !== userId.toString()) {
-      throw new UnauthenticatedError("Only the owner of the service can reply to the quote");
-    }
-
-    // Validate required fields
-    if (!description || !estimatedCost) {
-      throw new BadRequestError("Please provide all required fields: description, estimatedCost");
-    }
-
-    // Create a new quote with updated information
-    const newQuote = await Quote.create({
-      user: userId,
-      service: quote.service,
-      description,
-      estimatedCost,
-    });
-
-    res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
-  } catch (error) {
-    console.error("Error creating counter offer quote:", error);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: "An error occurred while creating the counter offer quote" });
+  // Validate existence of user and quote
+  if (!user) {
+    throw new NotFoundError("User not found");
   }
+  if (!quote) {
+    throw new NotFoundError("Quote not found");
+  }
+
+  // Ensure the contractor is assigned to the service
+  if (service.user.toString() !== userId.toString()) {
+    throw new UnauthenticatedError("Only the owner of the service can reply to the quote");
+  }
+
+  // Validate required fields
+  if (!description || !estimatedCost) {
+    throw new BadRequestError("Please provide all required fields: description, estimatedCost");
+  }
+
+  // Create a new quote with updated information
+  const newQuote = await Quote.create({
+    user: userId,
+    service: quote.service,
+    description,
+    estimatedCost,
+  });
+
+  res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
 };

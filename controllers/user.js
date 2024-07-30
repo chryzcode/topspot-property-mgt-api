@@ -87,62 +87,50 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  try {
-    // Prevent creation of tenant accounts through sign-up
-    if (req.body.userType && req.body.userType === "tenant") {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json({ error: "You are not allowed to create a tenant account through sign-up" });
-    }
-
-    const existingUser = await User.findOne({ email: req.body.email });
-    if (existingUser) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    req.body.password = await bcrypt.hash(req.body.password, salt);
-
-    const user = await User.create({ ...req.body });
-    const maildata = {
-      from: process.env.Email_User,
-      to: user.email,
-      subject: `${user.firstName}, verify your account`,
-      html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
-        user.id
-      }&token=${encodeURIComponent(
-        linkVerificationtoken
-      )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
-    };
-
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-      }
-      const token = user.createJWT();
-      return res.status(StatusCodes.CREATED).json({
-        user,
-        token,
-        message: "Check your email for account verification",
-      });
-    });
-  } catch (error) {
-    console.error("Error during sign-up:", error);
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  // Prevent creation of tenant accounts through sign-up
+  if (req.body.userType && req.body.userType === "tenant") {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ error: "You are not allowed to create a tenant account through sign-up" });
   }
+
+  const existingUser = await User.findOne({ email: req.body.email });
+  if (existingUser) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  req.body.password = await bcrypt.hash(req.body.password, salt);
+
+  const user = await User.create({ ...req.body });
+  const maildata = {
+    from: process.env.Email_User,
+    to: user.email,
+    subject: `${user.firstName}, verify your account`,
+    html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
+      user.id
+    }&token=${encodeURIComponent(
+      linkVerificationtoken
+    )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+    const token = user.createJWT();
+    return res.status(StatusCodes.CREATED).json({
+      user,
+      token,
+      message: "Check your email for account verification",
+    });
+  });
 };
 
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
 
-  // Check if JWT secret key is defined
-  if (!secretKey) {
-    console.error("JWT secret key is not defined");
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
-  }
-
-  console.log(token);
 
   // Check if token and userId are provided
   if (!token) {

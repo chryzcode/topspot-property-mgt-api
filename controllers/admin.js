@@ -34,15 +34,11 @@ export const filterServicesMonthly = async (req, res) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  try {
-    const services = await Service.find({
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-    }).sort({ createdAt: -1 });
+  const services = await Service.find({
+    createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+  }).sort({ createdAt: -1 });
 
-    res.status(StatusCodes.OK).json({ services });
-  } catch (error) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
-  }
+  res.status(StatusCodes.OK).json({ services });
 };
 
 export const upgradeToHomeOwner = async (req, res) => {
@@ -111,159 +107,137 @@ export const adminCreateCounterOffer = async (req, res) => {
 };
 
 export const adminApproveQuote = async (req, res) => {
-  try {
-    const { quoteId } = req.params;
-    const { userId } = req.user;
-    const { contractorId } = req.body;
+  const { quoteId } = req.params;
+  const { userId } = req.user;
+  const { contractorId } = req.body;
 
-    if (!contractorId) {
-      throw new BadRequestError("Please provide the contractorId");
-    }
-
-    // Fetch the user, quote, and service details
-    const user = await User.findById(userId);
-    const quote = await Quote.findById(quoteId).populate("service");
-    const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
-
-    // Validate existence of user, quote, and service
-    if (!user) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
-    }
-    if (!quote) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
-    }
-    if (!quote.service) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
-    }
-
-    if (!contractor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
-    }
-    if (user.userType !== "admin") {
-      // Ensure that only admin can approve
-      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
-    }
-
-    // Ensure the user is not the owner of the quote or service
-    if (userId === quote.user.toString()) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
-    }
-
-    // Approve the quote
-    const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
-
-    // Update the service's contractor, amount, and description
-    const updateData = {
-      amount: quote.estimatedCost,
-      contractor,
-      description: quote.description,
-    };
-
-    if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
-    if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
-    if (quote.availableFromTime) updateData.availableFromTime = quote.availableFromTime;
-    if (quote.availableToTime) updateData.availableToTime = quote.availableToTime;
-
-    const updatedService = await Service.findByIdAndUpdate(quote.service._id, updateData, {
-      runValidators: true,
-      new: true,
-    });
-
-    // Respond with success message
-    return res.status(StatusCodes.OK).json({ success: "Quote accepted", updatedQuote, updatedService });
-  } catch (error) {
-    console.error("Error approving quote:", error);
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred while approving the quote" });
+  if (!contractorId) {
+    throw new BadRequestError("Please provide the contractorId");
   }
+
+  // Fetch the user, quote, and service details
+  const user = await User.findById(userId);
+  const quote = await Quote.findById(quoteId).populate("service");
+  const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
+
+  // Validate existence of user, quote, and service
+  if (!user) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+  }
+  if (!quote) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
+  }
+  if (!quote.service) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
+  }
+
+  if (!contractor) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
+  }
+  if (user.userType !== "admin") {
+    // Ensure that only admin can approve
+    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
+  }
+
+  // Ensure the user is not the owner of the quote or service
+  if (userId === quote.user.toString()) {
+    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
+  }
+
+  // Approve the quote
+  const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+
+  // Update the service's contractor, amount, and description
+  const updateData = {
+    amount: quote.estimatedCost,
+    contractor,
+    description: quote.description,
+  };
+
+  if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+  if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+  if (quote.availableFromTime) updateData.availableFromTime = quote.availableFromTime;
+  if (quote.availableToTime) updateData.availableToTime = quote.availableToTime;
+
+  const updatedService = await Service.findByIdAndUpdate(quote.service._id, updateData, {
+    runValidators: true,
+    new: true,
+  });
+
+  // Respond with success message
+  return res.status(StatusCodes.OK).json({ success: "Quote accepted", updatedQuote, updatedService });
 };
 
 export const adminVerifyContractor = async (req, res) => {
-  try {
-    const { contractorId } = req.params;
-    const { userId } = req.user;
+  const { contractorId } = req.params;
+  const { userId } = req.user;
 
-    // Fetch the user and contractor details
-    const user = await User.findById(userId);
-    const contractor = await User.findById(contractorId);
+  // Fetch the user and contractor details
+  const user = await User.findById(userId);
+  const contractor = await User.findById(contractorId);
 
-    // Validate existence of user and contractor
-    if (!user) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
-    }
-    if (!contractor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
-    }
-
-    // Check if the user is an admin
-    if (user.userType !== "admin") {
-      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify contractor accounts" });
-    }
-
-    // Check if the user to be verified is a contractor
-    if (contractor.userType !== "contractor") {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only contractor accounts can be verified" });
-    }
-
-    // Verify the contractor's account
-    contractor.contractorAccountStatus = "active";
-    await contractor.save();
-
-    // Respond with success message
-    return res.status(StatusCodes.OK).json({ success: "Contractor account verified successfully", contractor });
-  } catch (error) {
-    console.error("Error verifying contractor account:", error);
-    return res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: "An error occurred while verifying the contractor account" });
+  // Validate existence of user and contractor
+  if (!user) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
   }
+  if (!contractor) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
+  }
+
+  // Check if the user is an admin
+  if (user.userType !== "admin") {
+    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify contractor accounts" });
+  }
+
+  // Check if the user to be verified is a contractor
+  if (contractor.userType !== "contractor") {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only contractor accounts can be verified" });
+  }
+
+  // Verify the contractor's account
+  contractor.contractorAccountStatus = "active";
+  await contractor.save();
+
+  // Respond with success message
+  return res.status(StatusCodes.OK).json({ success: "Contractor account verified successfully", contractor });
 };
 
 export const deleteContractorAccount = async (req, res) => {
-  try {
-    const { contractorId } = req.params;
+  const { contractorId } = req.params;
 
-    // Find the contractor account
-    const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
+  // Find the contractor account
+  const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
-    // Check if contractor account exists
-    if (!contractor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
-    }
-
-    // Delete the contractor account
-    await User.deleteOne({ _id: contractorId });
-
-    // Respond with success message
-    return res.status(StatusCodes.OK).json({ message: "Contractor account deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting contractor account:", error);
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+  // Check if contractor account exists
+  if (!contractor) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
   }
+
+  // Delete the contractor account
+  await User.deleteOne({ _id: contractorId });
+
+  // Respond with success message
+  return res.status(StatusCodes.OK).json({ message: "Contractor account deleted successfully" });
 };
 
 export const allContractors = async (req, res) => {
-  try {
-    const contractors = await User.find({ userType: "contractor" });
+  const contractors = await User.find({ userType: "contractor" });
 
-    // Iterate over each contractor to get their completed services count
-    const contractorsWithServiceCount = await Promise.all(
-      contractors.map(async contractor => {
-        const completedServicesCount = await Service.countDocuments({
-          contractor: contractor._id,
-          status: "completed", // Ensure the status is a string
-        });
-        return {
-          ...contractor.toObject(), // Convert Mongoose document to plain JavaScript object
-          completedServicesCount,
-        };
-      })
-    );
+  // Iterate over each contractor to get their completed services count
+  const contractorsWithServiceCount = await Promise.all(
+    contractors.map(async contractor => {
+      const completedServicesCount = await Service.countDocuments({
+        contractor: contractor._id,
+        status: "completed", // Ensure the status is a string
+      });
+      return {
+        ...contractor.toObject(), // Convert Mongoose document to plain JavaScript object
+        completedServicesCount,
+      };
+    })
+  );
 
-    res.status(StatusCodes.OK).json({ contractors: contractorsWithServiceCount });
-  } catch (error) {
-    console.error("Error fetching contractors:", error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
-  }
+  res.status(StatusCodes.OK).json({ contractors: contractorsWithServiceCount });
 };
 
 export const allUsers = async (req, res) => {

@@ -21,6 +21,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 const linkVerificationtoken = generateToken(uniqueID);
 
+
 export const signIn = async (req, res) => {
   const { email, password } = req.body;
 
@@ -132,9 +133,14 @@ export const signUp = async (req, res) => {
   }
 };
 
+
 export const verifyAccount = async (req, res) => {
   const { token, userId } = req.params; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
+
+  if (!secretKey) {
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "JWT secret key is not defined" });
+  }
 
   try {
     const decoded = jwt.verify(token, secretKey); // Verify the token

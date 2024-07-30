@@ -14,12 +14,11 @@ export const transporter = nodemailer.createTransport({
 
 
 
-export const generateToken = (uniqueID) => {
-  const expiry = "10m";
-  const secret_key = process.env.JWT_SECRET;
-  return jwt.sign({ id: uniqueID }, secret_key, { expiresIn: expiry });
+export const generateToken = uniqueID => {
+  const expiry = "20m";
+  const secretKey = process.env.JWT_SECRET;
+  return jwt.sign({ id: uniqueID }, secretKey, { expiresIn: expiry });
 };
-
 
 
 

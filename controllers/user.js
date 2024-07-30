@@ -134,21 +134,38 @@ export const signUp = async (req, res) => {
 };
 
 
+
 export const verifyAccount = async (req, res) => {
-  const { token, userId } = req.params; // Correctly extract token and userId
+  const { token, id } = req.query; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
 
+  // Check if JWT secret key is defined
   if (!secretKey) {
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "JWT secret key is not defined" });
+    console.error("JWT secret key is not defined");
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal server error" });
+  }
+
+  console.log(token)
+
+  // Check if token and userId are provided
+  if (!token) {
+    console.error("Token is not provided");
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Token is required" });
+  }
+
+  if (!id) {
+    console.error("User ID is not provided");
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "User ID is required" });
   }
 
   try {
     const decoded = jwt.verify(token, secretKey); // Verify the token
     console.log("Token decoded successfully:", decoded);
 
-    const user = await User.findOneAndUpdate({ _id: userId }, { verified: true }, { new: true, runValidators: true });
+    const user = await User.findOneAndUpdate({ _id: id }, { verified: true }, { new: true, runValidators: true });
 
     if (!user) {
+      console.error("User not found");
       return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
     }
 

@@ -254,7 +254,7 @@ export const createTenantAccount = async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   req.body.password = await bcrypt.hash("default_pword", salt);
 
-  const user = await User.create({ ...req.body, userType: "tenant", addressLine1: " " });
+  const user = await User.create({ ...req.body, userType: "tenant" });
 
   res.status(StatusCodes.CREATED).json({
     user,

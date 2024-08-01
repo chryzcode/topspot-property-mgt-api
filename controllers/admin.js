@@ -174,7 +174,7 @@ export const adminVerifyContractor = async (req, res) => {
 
   // Fetch the user and contractor details
   const user = await User.findById(userId);
-  const contractor = await User.findById(contractorId);
+  let contractor = await User.findById(contractorId);
 
   // Validate existence of user and contractor
   if (!user) {
@@ -195,8 +195,7 @@ export const adminVerifyContractor = async (req, res) => {
   }
 
   // Verify the contractor's account
-  contractor.contractorAccountStatus = "active";
-  await contractor.save();
+  contractor = await User.findOneAndUpdate({ _id: contractorId }, { contractorAccountStatus: "active" }, { new: true });
 
   // Respond with success message
   return res.status(StatusCodes.OK).json({ success: "Contractor account verified successfully", contractor });

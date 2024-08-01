@@ -102,7 +102,7 @@ export const signUp = async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   req.body.password = await bcrypt.hash(req.body.password, salt);
 
-  const user = await User.create({ ...req.body });
+  const user = await User.create({ ...req.body, addressLine1: req.body.addressLine1 || " " });
   const maildata = {
     from: process.env.Email_User,
     to: user.email,

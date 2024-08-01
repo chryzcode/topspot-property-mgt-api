@@ -67,8 +67,8 @@ export const adminCreateCounterOffer = async (req, res) => {
   const { description, estimatedCost, currency } = req.body;
 
   // Fetch the user and quote details
-  const user = await User.findById(userId);
-  const quote = await Quote.findById(quoteId).populate("service");
+  const user = await User.findOne({ _id: userId });
+  const quote = await Quote.findById({ _id: quoteId });
 
   // Validate existence of user and quote
   if (!user) {

@@ -68,7 +68,8 @@ export const adminCreateCounterOffer = async (req, res) => {
 
   // Fetch the user and quote details
   const user = await User.findOne({ _id: userId });
-  const quote = await Quote.findById({ _id: quoteId });
+  const quote = await Quote.findOne({ _id: quoteId });
+  console.log((quote))
 
   // Validate existence of user and quote
   if (!user) {

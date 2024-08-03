@@ -10,8 +10,7 @@ const stripe = new stripePackage(process.env.STRIPE_SECRET_KEY);
 const DOMAIN = process.env.DOMAIN;
 
 export const cancelPayment = async (req, res) => {
-  const { userId } = req.user;
-  const { serviceId } = req.params;
+  const { serviceId, userId } = req.params;
   const service = await Service.findOne({ _id: serviceId, user: userId });
   if (!service) {
     throw new BadRequestError("Service does not exist");
@@ -20,8 +19,7 @@ export const cancelPayment = async (req, res) => {
 };
 
 export const successfulPayment = async (req, res) => {
-  const { userId } = req.user;
-  const { serviceId } = req.params;
+  const { serviceId, userId } = req.params;
 
   let service = await Service.findOne({ _id: serviceId });
   if (!service) {
@@ -70,8 +68,8 @@ export const makePayment = async (req, res) => {
   req.body.amount = service.amount;
   req.body.service = service.id;
   await Payment.create({ ...req.body });
-  const successUrl = `${DOMAIN}/payment/${service.id}/success`;
-  const cancelUrl = `${DOMAIN}/payment/${service.id}/cancel`;
+  const successUrl = `${DOMAIN}/payment/${service.id}/success/${userId}`;
+  const cancelUrl = `${DOMAIN}/payment/${service.id}/cancel/${userId}`;
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"], // Payment method types accepted (e.g., card)

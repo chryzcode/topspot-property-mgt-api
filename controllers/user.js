@@ -335,7 +335,6 @@ export const getUserQuotes = async (req, res) => {
       select: "name email",
     })
     .exec();
-  console.log(services);
   // Create an object to hold the final results
   const results = [];
 

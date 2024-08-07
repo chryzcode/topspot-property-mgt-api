@@ -326,56 +326,27 @@ export const chooseUserType = async (req, res) => {
 };
 
 export const getUserQuotes = async (req, res) => {
-  const { userId } = req.user;
+    const {userId} = req.user; // Assuming user ID is available in req.user
 
-  // Fetch services for the logged-in user
-  const services = await Service.find({ user: userId })
-    .populate({
-      path: "user",
-      select: "name email",
-    })
-    .exec();
-  // Create an object to hold the final results
-  const results = [];
-
-  // Iterate over each service
-  for (const service of services) {
-    // Fetch quotes for the current service
-    const quotes = await Quote.find({ service: service._id })
+    // Fetch all quotes related to the services of the logged-in user
+    const quotes = await Quote.find({})
       .populate({
         path: "user",
-        select: "name email",
+        select: "firstName lastName email",
+      })
+      .populate({
+        path: "service",
+        match: { user: userId }, // Ensure the service belongs to the logged-in user
+        populate: {
+          path: "user",
+          select: "firstName lastName email",
+        },
       })
       .exec();
 
-    // Remove the service ID from each quote
-    const quotesWithoutServiceId = quotes.map(quote => {
-      const { service, ...rest } = quote.toObject();
-      return rest;
-    });
+    // Filter out quotes where the service is null (i.e., does not belong to the logged-in user)
+    const filteredQuotes = quotes.filter(quote => quote.service);
 
-    // Add service with its quotes to the results
-    results.push({
-      service: {
-        _id: service._id,
-        user: service.user,
-        location: service.location,
-        contractor: service.contractor,
-        name: service.name,
-        categories: service.categories,
-        description: service.description,
-        currency: service.currency,
-        amount: service.amount,
-        paid: service.paid,
-        availableFromDate: service.availableFromDate,
-        availableToDate: service.availableToDate,
-        availableFromTime: service.availableFromTime,
-        availableToTime: service.availableToTime,
-        status: service.status,
-        quotes: quotesWithoutServiceId, // Nested quotes
-      },
-    });
-  }
-
-  res.status(200).json(results);
+    res.status(200).json(filteredQuotes);
+ 
 };

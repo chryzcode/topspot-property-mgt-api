@@ -117,19 +117,12 @@ export const searchServices = async (req, res) => {
 };
 
 export const createService = async (req, res) => {
-  req.body.user = req.user.userId;
-  const { media, description, amount } = req.body;
-
-  // Upload media files to Cloudinary if they exist
-  if (media && media.length > 0) {
-    for (let i = 0; i < media.length; i++) {
-      const result = await cloudinary.v2.uploader.upload(media[i].url, {
-        folder: "Topspot/Services/Media/",
-        use_filename: true,
-      });
-      media[i].url = result.url; // Replace media URL with Cloudinary URL
-    }
+  const user = await User.findOne({ _id: req.user.userId });
+  if (!user) {
+    throw new NotFoundError("User does not exist");
   }
+  req.body.user = user._id;
+  req.body.location = user.addressLine1;
 
   // Create service in the database
   let service = await Service.create({ ...req.body });
@@ -139,7 +132,6 @@ export const createService = async (req, res) => {
     user: req.user.userId,
     service: service._id,
     description: description,
-    estimatedCost: amount,
   });
 
   // Optionally, populate additional data from the created service and quote
@@ -153,26 +145,10 @@ export const createService = async (req, res) => {
 export const editService = async (req, res) => {
   const { serviceId } = req.params;
   const userId = req.user.userId;
-  const { media } = req.body;
 
   let service = await Service.findOne({ _id: serviceId, user: userId });
   if (!service) {
     throw new NotFoundError("Service does not exist");
-  }
-
-  if (media && media !== service.media) {
-    for (let i = 0; i < media.length; i++) {
-      try {
-        const result = await cloudinary.v2.uploader.upload(media[i].url, {
-          folder: "Topspot/Services/Media/",
-          use_filename: true,
-        });
-        media[i].url = result.url; // Replace media URL with Cloudinary URL
-      } catch (error) {
-        console.error(error);
-        throw new BadRequestError({ "error uploading image on cloudinary": error });
-      }
-    }
   }
 
   service = await Service.findOneAndUpdate({ _id: serviceId, user: userId }, req.body, {
@@ -222,6 +198,10 @@ export const approveQuoteByOwner = async (req, res) => {
     throw new NotFoundError("Service does not exist");
   }
 
+  if (!user) {
+    throw new NotFoundError("User does not exist");
+  }
+
   // Check if the user is the owner of the service
   if (service.user.toString() !== userId.toString()) {
     throw new UnauthenticatedError("You are not authorized to approve this quote");
@@ -232,8 +212,8 @@ export const approveQuoteByOwner = async (req, res) => {
 
   // Prepare the update data for the service
   const updateData = {
-    amount: quote.estimatedCost,
-    description: quote.description,
+    amount: quote.estimatedCost || service.amount,
+    description: quote.description || service.description,
     status: "ongoing",
   };
 
@@ -264,15 +244,14 @@ export const approveQuoteByOwner = async (req, res) => {
   res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
 };
 
-export const ownerReplyQuote = async (req, res) => {
+export const ownerDisapproveQuoye = async (req, res) => {
   const { userId } = req.user;
   const { quoteId } = req.params;
-  const { description, estimatedCost } = req.body;
 
   // Fetch the user and quote details
   const user = await User.findById(userId);
-  const quote = await Quote.findById(quoteId).populate("service");
-  const service = quote.service;
+  let quote = await Quote.findById(quoteId).populate("service");
+  let service = await Service.findById(quote.service);
 
   // Validate existence of user and quote
   if (!user) {
@@ -282,23 +261,65 @@ export const ownerReplyQuote = async (req, res) => {
     throw new NotFoundError("Quote not found");
   }
 
-  // Ensure the contractor is assigned to the service
-  if (service.user.toString() !== userId.toString()) {
-    throw new UnauthenticatedError("Only the owner of the service can reply to the quote");
+  if (!service) {
+    throw new NotFoundError("Service not found");
   }
 
-  // Validate required fields
-  if (!description || !estimatedCost) {
-    throw new BadRequestError("Please provide all required fields: description, estimatedCost");
+  if (!user) {
+    throw new NotFoundError("User does not exist");
+  }
+
+  // Ensure the contractor is assigned to the service
+  if (service.user.toString() !== userId.toString()) {
+    throw new UnauthenticatedError("Only the owner of the service can disapprove to the quote");
   }
 
   // Create a new quote with updated information
-  const newQuote = await Quote.create({
-    user: userId,
-    service: quote.service,
-    description,
-    estimatedCost,
-  });
+  service = await Service.findOneAndUpdate(
+    { _id: quote.service },
+    { contractor: null, status: "cancelled" },
+    { new: true }
+  );
+  quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "false" });
 
-  res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
+  res.status(StatusCodes.OK).json({ service, quote });
 };
+
+// export const ownerReplyQuote = async (req, res) => {
+//   const { userId } = req.user;
+//   const { quoteId } = req.params;
+//   const { description, estimatedCost } = req.body;
+
+//   // Fetch the user and quote details
+//   const user = await User.findById(userId);
+//   const quote = await Quote.findById(quoteId).populate("service");
+//   const service = quote.service;
+
+//   // Validate existence of user and quote
+//   if (!user) {
+//     throw new NotFoundError("User not found");
+//   }
+//   if (!quote) {
+//     throw new NotFoundError("Quote not found");
+//   }
+
+//   // Ensure the contractor is assigned to the service
+//   if (service.user.toString() !== userId.toString()) {
+//     throw new UnauthenticatedError("Only the owner of the service can reply to the quote");
+//   }
+
+//   // Validate required fields
+//   if (!description || !estimatedCost) {
+//     throw new BadRequestError("Please provide all required fields: description, estimatedCost");
+//   }
+
+//   // Create a new quote with updated information
+//   const newQuote = await Quote.create({
+//     user: userId,
+//     service: quote.service,
+//     description,
+//     estimatedCost,
+//   });
+
+//   res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
+// };

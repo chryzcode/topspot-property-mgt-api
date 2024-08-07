@@ -7,7 +7,7 @@ import {
   completeService,
   searchServices,
   approveQuoteByOwner,
-  ownerReplyQuote,
+  ownerDisapproveQuoye,
 } from "../controllers/service.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -21,6 +21,6 @@ router.route("/edit-service/:serviceId").put(authenticateUser, editService);
 router.route("/complete-service/:serviceId").post(authenticateUser, completeService);
 router.route("/search-service").get(authenticateUser, searchServices);
 router.route("/approve-quote/:quoteId").post(authenticateUser, approveQuoteByOwner);
-router.route("/reply-quote/:quoteId").post(authenticateUser, ownerReplyQuote);
+router.route("/disapprove-quote/:quoteId").post(authenticateUser, ownerDisapproveQuoye);
 
 export default router;

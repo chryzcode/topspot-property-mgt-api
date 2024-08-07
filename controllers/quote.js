@@ -20,7 +20,6 @@ export const getServiceQuotes = async (req, res) => {
       populate: [
         { path: "user", select: "firstName lastName imageCloudinaryUrl userType _id" },
         { path: "contractor", select: "firstName lastName imageCloudinaryUrl userType _id" },
-        { path: "media" },
       ],
     });
   res.status(StatusCodes.OK).json({ quotes });

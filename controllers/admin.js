@@ -61,113 +61,109 @@ export const downgradeToTenant = async (req, res) => {
   res.status(StatusCodes.OK).json({ user });
 };
 
-export const adminCreateCounterOffer = async (req, res) => {
+export const assignContractor = async (req, res) => {
   const { userId } = req.user;
   const { quoteId } = req.params;
-  const { description, estimatedCost, currency } = req.body;
+  const { contractorId } = req.body;
 
   // Fetch the user and quote details
   const user = await User.findOne({ _id: userId });
   const quote = await Quote.findOne({ _id: quoteId });
-  console.log((quote))
+  const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
   // Validate existence of user and quote
   if (!user) {
     throw new NotFoundError("User not found");
+  }
+
+  if (!contractor) {
+    throw new NotFoundError("Contractor not found");
   }
   if (!quote) {
     throw new NotFoundError("Quote not found");
   }
 
   // Fetch the associated service
-  const service = quote.service;
+  let service = await Service.findOne({ _id: quote.service });
   if (!service) {
     throw new NotFoundError("Service not found");
   }
 
   // Check if the user is an admin
   if (user.userType !== "admin") {
-    throw new UnauthenticatedError("Only admins can create a counter offer quote");
+    throw new UnauthenticatedError("Only admins can appoint contractors");
   }
 
-  // Validate required fields
-  if (!description || !estimatedCost) {
-    throw new BadRequestError("Please provide all required fields");
-  }
+  service = await Service.findOneAndUpdate(
+    { _id: quote.service },
+    { contractor: contractor._id },
+    { runValidators: true, new: true }
+  );
 
-  // Create a new counter offer quote
-  const newQuote = await Quote.create({
-    user: userId,
-    service: service._id,
-    description,
-    estimatedCost,
-    currency: "usd",
-  });
-
-  res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
+  res.status(StatusCodes.CREATED).json({ success: service });
 };
 
-export const adminApproveQuote = async (req, res) => {
-  const { quoteId } = req.params;
-  const { userId } = req.user;
-  const { contractorId } = req.body;
+// export const adminApproveQuote = async (req, res) => {
+//   const { quoteId } = req.params;
+//   const { userId } = req.user;
+//   const { contractorId } = req.body;
 
-  if (!contractorId) {
-    throw new BadRequestError("Please provide the contractorId");
-  }
+//   if (!contractorId) {
+//     throw new BadRequestError("Please provide the contractorId");
+//   }
 
-  // Fetch the user, quote, and service details
-  const user = await User.findById(userId);
-  const quote = await Quote.findById(quoteId).populate("service");
-  const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
+//   // Fetch the user, quote, and service details
+//   const user = await User.findById(userId);
+//   const quote = await Quote.findById(quoteId).populate("service");
+//   const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
-  // Validate existence of user, quote, and service
-  if (!user) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
-  }
-  if (!quote) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
-  }
-  if (!quote.service) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
-  }
+//   // Validate existence of user, quote, and service
+//   if (!user) {
+//     return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+//   }
+//   if (!quote) {
+//     return res.status(StatusCodes.NOT_FOUND).json({ error: "Quote not found" });
+//   }
+//   if (!quote.service) {
+//     return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
+//   }
 
-  if (!contractor) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
-  }
-  if (user.userType !== "admin") {
-    // Ensure that only admin can approve
-    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
-  }
+//   if (!contractor) {
+//     return res.status(StatusCodes.NOT_FOUND).json({ error: "Contractor not found" });
+//   }
+//   if (user.userType !== "admin") {
+//     // Ensure that only admin can approve
+//     return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admin can approve the quote" });
+//   }
 
-  // Ensure the user is not the owner of the quote or service
-  if (userId === quote.user.toString()) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
-  }
+//   // Ensure the user is not the owner of the quote or service
+//   if (userId === quote.user.toString()) {
+//     return res.status(StatusCodes.UNAUTHORIZED).json({ error: "You cannot approve your own quote" });
+//   }
 
-  // Approve the quote
-  const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+//   // Approve the quote
+//   const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
 
-  // Update the service's contractor, amount, and description
-  const updateData = {
-    amount: quote.estimatedCost,
-    contractor,
-    description: quote.description,
-  };
+//   // Update the service's contractor, amount, and description
+//   const updateData = {
+//     amount: quote.estimatedCost,
+//     contractor,
+//     description: quote.description,
+//   };
 
-  if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
-  if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
-  if (quote.availableFromTime) updateData.availableFromTime = quote.availableFromTime;
-  if (quote.availableToTime) updateData.availableToTime = quote.availableToTime;
+//   if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+//   if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+//   if (quote.availableFromTime) updateData.availableFromTime = quote.availableFromTime;
+//   if (quote.availableToTime) updateData.availableToTime = quote.availableToTime;
 
-  const updatedService = await Service.findByIdAndUpdate(quote.service._id, updateData, {
-    runValidators: true,
-    new: true,
-  });
+//   const updatedService = await Service.findByIdAndUpdate(quote.service._id, updateData, {
+//     runValidators: true,
+//     new: true,
+//   });
 
-  // Respond with success message
-  return res.status(StatusCodes.OK).json({ success: "Quote accepted", updatedQuote, updatedService });
-};
+//   // Respond with success message
+//   return res.status(StatusCodes.OK).json({ success: "Quote accepted", updatedQuote, updatedService });
+// };
 
 export const adminVerifyContractor = async (req, res) => {
   const { contractorId } = req.params;

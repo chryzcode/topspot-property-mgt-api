@@ -38,12 +38,9 @@ const serviceSchema = new mongoose.Schema(
     currency: {
       type: String,
       enum: ["usd"],
-      default: "usd",
-      required: [true, "Please provide currency, ex. usd"],
     },
     amount: {
       type: Number,
-      required: [true, "Please provide amount"],
     },
     paid: {
       type: Boolean,
@@ -67,7 +64,6 @@ const serviceSchema = new mongoose.Schema(
       required: [true, "Please provide available to time"],
       match: [/^([01]\d|2[0-3]):([0-5]\d)$/, "Please provide a valid time in HH:mm format"],
     },
-    media: ["Media"],
     status: {
       type: String,
       enum: ["ongoing", "pending", "completed", "cancelled"],

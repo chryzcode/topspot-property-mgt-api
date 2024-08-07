@@ -5,12 +5,7 @@ import mongoose from "mongoose";
 
 const allowedCategories = ["plumbing", "painting", "furniture assembly", "electrical work", "room cleaning", "other"];
 
-const mediaSchema = new mongoose.Schema({
-  url: {
-    type: String,
-    required: [true, "Please provide url"],
-  },
-});
+
 
 const userSchema = new mongoose.Schema(
   {
@@ -170,6 +165,6 @@ userSchema.set("toJSON", {
 });
 
 const User = mongoose.model("User", userSchema);
-const Media = mongoose.model("Media", mediaSchema);
 
-export { User, allowedCategories, Media };
+
+export { User, allowedCategories };

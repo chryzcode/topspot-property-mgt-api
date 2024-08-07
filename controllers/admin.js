@@ -103,6 +103,59 @@ export const assignContractor = async (req, res) => {
   res.status(StatusCodes.CREATED).json({ success: service });
 };
 
+export const adminGetAllQuotes = async (req, res) => {
+  // Fetch all services
+  const services = await Service.find({})
+    .populate({
+      path: "user",
+      select: "name email",
+    })
+    .exec();
+
+  // Create an object to hold the final results
+  const results = [];
+
+  // Iterate over each service
+  for (const service of services) {
+    // Fetch quotes for the current service
+    const quotes = await Quote.find({ service: service._id })
+      .populate({
+        path: "user",
+        select: "name email",
+      })
+      .exec();
+
+    // Remove the service ID from each quote
+    const quotesWithoutServiceId = quotes.map(quote => {
+      const { service, ...rest } = quote.toObject();
+      return rest;
+    });
+
+    // Add service with its quotes to the results
+    results.push({
+      service: {
+        _id: service._id,
+        user: service.user,
+        location: service.location,
+        contractor: service.contractor,
+        name: service.name,
+        categories: service.categories,
+        description: service.description,
+        currency: service.currency,
+        amount: service.amount,
+        paid: service.paid,
+        availableFromDate: service.availableFromDate,
+        availableToDate: service.availableToDate,
+        availableFromTime: service.availableFromTime,
+        availableToTime: service.availableToTime,
+        status: service.status,
+        quotes: quotesWithoutServiceId, // Nested quotes
+      },
+    });
+  }
+
+  res.status(200).json(results);
+};
 // export const adminApproveQuote = async (req, res) => {
 //   const { quoteId } = req.params;
 //   const { userId } = req.user;

@@ -7,7 +7,7 @@ import {
   getServiceQuotes,
   filterServicesMonthly,
   assignContractor,
-  // adminApproveQuote,
+  adminGetAllQuotes,
   adminVerifyContractor,
   allContractors,
   deleteContractorAccount,
@@ -29,7 +29,7 @@ router.route("/get-service-quotes/:serviceId").get(authenticateUser, admin, getS
 router.route("/filter-services-monthly").get(authenticateUser, admin, filterServicesMonthly);
 router.route("/assign-contractor/:quoteId").post(authenticateUser, admin, assignContractor);
 router.route("/verify-contractor/:contractorId").post(authenticateUser, admin, adminVerifyContractor);
-// router.route("/approve-quote/:quoteId").post(authenticateUser, admin, adminApproveQuote);
+router.route("/get-all-quotes").get(authenticateUser, admin, adminGetAllQuotes);
 router.route("/all-contractors").get(authenticateUser, admin, allContractors);
 router.route("/delete-contractor/:contractorId").delete(authenticateUser, admin, deleteContractorAccount);
 router.route("/all-users").get(authenticateUser, admin, allUsers);

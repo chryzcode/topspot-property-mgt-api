@@ -7,7 +7,8 @@ import jwt from "jsonwebtoken";
 import cloudinary from "cloudinary";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import nodemailer from "nodemailer";
+import { Service } from "../models/service.js";
+import { Quote } from "../models/quote.js";
 
 cloudinary.v2.config(process.env.CLOUDINARY_URL);
 
@@ -130,7 +131,6 @@ export const signUp = async (req, res) => {
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId
   const secretKey = process.env.JWT_SECRET;
-
 
   // Check if token and userId are provided
   if (!token) {
@@ -323,4 +323,59 @@ export const chooseUserType = async (req, res) => {
   const { userType } = req.body;
   user = await User.findOneAndUpdate({ _id: userId }, { userType: userType }, { new: true, runValidators: true });
   res.status(StatusCodes.OK).json({ user });
+};
+
+export const getUserQuotes = async (req, res) => {
+  const { userId } = req.user;
+
+  // Fetch services for the logged-in user
+  const services = await Service.find({ user: userId })
+    .populate({
+      path: "user",
+      select: "name email",
+    })
+    .exec();
+  // Create an object to hold the final results
+  const results = [];
+
+  // Iterate over each service
+  for (const service of services) {
+    // Fetch quotes for the current service
+    const quotes = await Quote.find({ service: service._id })
+      .populate({
+        path: "user",
+        select: "name email",
+      })
+      .exec();
+
+    // Remove the service ID from each quote
+    const quotesWithoutServiceId = quotes.map(quote => {
+      const { service, ...rest } = quote.toObject();
+      return rest;
+    });
+
+    // Add service with its quotes to the results
+    results.push({
+      service: {
+        _id: service._id,
+        user: service.user,
+        location: service.location,
+        contractor: service.contractor,
+        name: service.name,
+        categories: service.categories,
+        description: service.description,
+        currency: service.currency,
+        amount: service.amount,
+        paid: service.paid,
+        availableFromDate: service.availableFromDate,
+        availableToDate: service.availableToDate,
+        availableFromTime: service.availableFromTime,
+        availableToTime: service.availableToTime,
+        status: service.status,
+        quotes: quotesWithoutServiceId, // Nested quotes
+      },
+    });
+  }
+
+  res.status(200).json(results);
 };

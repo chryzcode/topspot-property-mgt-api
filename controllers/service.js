@@ -127,19 +127,12 @@ export const createService = async (req, res) => {
   // Create service in the database
   let service = await Service.create({ ...req.body });
 
-  // Create a quote for the newly created service
-  const quote = await Quote.create({
-    user: req.user.userId,
-    service: service._id,
-    description: description,
-  });
 
   // Optionally, populate additional data from the created service and quote
   service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
-  const populatedQuote = await Quote.findOne({ _id: quote._id }).populate("user", "fullName avatar userType _id");
 
   // Respond with the created service and quote
-  res.status(StatusCodes.OK).json({ service, quote: populatedQuote });
+  res.status(StatusCodes.OK).json({ service });
 };
 
 export const editService = async (req, res) => {

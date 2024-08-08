@@ -31,7 +31,7 @@ const quoteSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "cancelled"],
       default: "pending",
-      required: [true, "Please provide status, ex. ongoing"],
+      required: [true, "Please provide approve status, ex. approved"],
     },
 
     availableFromDate: {

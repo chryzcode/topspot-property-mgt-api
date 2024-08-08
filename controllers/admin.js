@@ -68,7 +68,7 @@ export const assignContractor = async (req, res) => {
 
   // Fetch the user and quote details
   const user = await User.findOne({ _id: userId });
-  const service = await Service.findOne({ _id: serviceId });
+  let service = await Service.findOne({ _id: serviceId });
   const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
   // Validate existence of user and quote

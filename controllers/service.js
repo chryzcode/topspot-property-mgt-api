@@ -201,7 +201,11 @@ export const approveQuoteByOwner = async (req, res) => {
   }
 
   // Approve the quote
-  const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+  const updatedQuote = await Quote.findByIdAndUpdate(
+    quoteId,
+    { approve: "approved" },
+    { runValidators: true, new: true }
+  );
 
   // Prepare the update data for the service
   const updateData = {
@@ -273,7 +277,7 @@ export const ownerDisapproveQuoye = async (req, res) => {
     { contractor: null, status: "cancelled" },
     { new: true }
   );
-  quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "false" });
+  quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "cancelled" });
 
   res.status(StatusCodes.OK).json({ service, quote });
 };

@@ -91,7 +91,11 @@ export const contractorApproveQuote = async (req, res) => {
   }
 
   // Approve the quote
-  const updatedQuote = await Quote.findByIdAndUpdate(quoteId, { approve: true }, { runValidators: true, new: true });
+  const updatedQuote = await Quote.findByIdAndUpdate(
+    quoteId,
+    { approve: "approved" },
+    { runValidators: true, new: true }
+  );
 
   // Update the service's contractor, amount, and availability period
   const updatedService = await Service.findByIdAndUpdate(

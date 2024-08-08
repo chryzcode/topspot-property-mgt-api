@@ -28,8 +28,10 @@ const quoteSchema = new mongoose.Schema(
     },
 
     approve: {
-      type: Boolean,
-      default: false,
+      type: String,
+      enum: ["pending", "approved", "cancelled"],
+      default: "pending",
+      required: [true, "Please provide status, ex. ongoing"],
     },
 
     availableFromDate: {

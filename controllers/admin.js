@@ -63,12 +63,12 @@ export const downgradeToTenant = async (req, res) => {
 
 export const assignContractor = async (req, res) => {
   const { userId } = req.user;
-  const { quoteId } = req.params;
+  const { serviceId } = req.params;
   const { contractorId } = req.body;
 
   // Fetch the user and quote details
   const user = await User.findOne({ _id: userId });
-  const quote = await Quote.findOne({ _id: quoteId });
+  const service = await Service.findOne({ _id: serviceId });
   const contractor = await User.findOne({ _id: contractorId, userType: "contractor" });
 
   // Validate existence of user and quote
@@ -79,12 +79,7 @@ export const assignContractor = async (req, res) => {
   if (!contractor) {
     throw new NotFoundError("Contractor not found");
   }
-  if (!quote) {
-    throw new NotFoundError("Quote not found");
-  }
 
-  // Fetch the associated service
-  let service = await Service.findOne({ _id: quote.service });
   if (!service) {
     throw new NotFoundError("Service not found");
   }
@@ -95,7 +90,7 @@ export const assignContractor = async (req, res) => {
   }
 
   service = await Service.findOneAndUpdate(
-    { _id: quote.service },
+    { _id: serviceId},
     { contractor: contractor._id },
     { runValidators: true, new: true }
   );

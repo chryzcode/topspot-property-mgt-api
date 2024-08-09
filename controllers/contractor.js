@@ -119,22 +119,21 @@ export const contractorApproveQuote = async (req, res) => {
   });
 };
 
-export const contractorReplyQuote = async (req, res) => {
+export const contractorCreateQuote = async (req, res) => {
   const { userId } = req.user;
-  const { quoteId } = req.params;
+  const { serciceId } = req.params;
   const { description, estimatedCost, availableFromDate, availableToDate, availableFromTime, availableToTime } =
     req.body;
 
   // Fetch the user and quote details
   const user = await User.findById(userId);
-  const quote = await Quote.findById(quoteId).populate("service");
-  const service = quote.service;
+  const service = await Service.findById(serciceId);
 
   // Validate existence of user and quote
   if (!user) {
     throw new NotFoundError("User not found");
   }
-  if (!quote) {
+  if (!service) {
     throw new NotFoundError("Quote not found");
   }
 
@@ -171,7 +170,7 @@ export const contractorReplyQuote = async (req, res) => {
   // Create a new quote with updated information
   const newQuote = await Quote.create({
     user: userId,
-    service: quote.service,
+    service: service._id,
     description,
     estimatedCost,
     availableFromDate,

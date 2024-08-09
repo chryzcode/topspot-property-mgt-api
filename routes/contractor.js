@@ -4,7 +4,7 @@ import {
   completedServices,
   allContractorServices,
   contractorApproveQuote,
-  contractorReplyQuote,
+  contractorCreateQuote,
 } from "../controllers/contractor.js";
 
 import authenticateUser from "../middleware/authentication.js";
@@ -16,6 +16,6 @@ router.route("/contractor-services").get(authenticateUser, authenticateContracto
 router.route("/completed-services").get(authenticateUser, authenticateContractor, completedServices);
 router.route("/all-contractor-services").get(authenticateUser, authenticateContractor, allContractorServices);
 router.route("/approve-quote/:quoteId").post(authenticateUser, authenticateContractor, contractorApproveQuote);
-router.route("/reply-quote/:quoteId").post(authenticateUser, authenticateContractor, contractorReplyQuote);
+router.route("/create-quote/:serviceId").post(authenticateUser, authenticateContractor, contractorCreateQuote);
 
 export default router;

@@ -121,20 +121,20 @@ export const contractorApproveQuote = async (req, res) => {
 
 export const contractorCreateQuote = async (req, res) => {
   const { userId } = req.user;
-  const { serciceId } = req.params;
+  const { serviceId } = req.params;
   const { description, estimatedCost, availableFromDate, availableToDate, availableFromTime, availableToTime } =
     req.body;
 
   // Fetch the user and quote details
   const user = await User.findById(userId);
-  const service = await Service.findById(serciceId);
+  const service = await Service.findById(serviceId);
 
   // Validate existence of user and quote
   if (!user) {
     throw new NotFoundError("User not found");
   }
   if (!service) {
-    throw new NotFoundError("Quote not found");
+    throw new NotFoundError("Service not found");
   }
 
   // Check if the user is a contractor

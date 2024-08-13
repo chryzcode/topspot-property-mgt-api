@@ -12,11 +12,13 @@ import {
   currentUser,
   chooseUserType,
   getUserQuotes,
+  updateUserAvatar,
 } from "../controllers/user.js";
 
 import authenticateUser from "../middleware/authentication.js";
 import passport from "passport";
 import { StatusCodes } from "http-status-codes";
+import { multerUpload } from "../utils/cloudinaryConfig.js";
 
 const router = express.Router();
 
@@ -51,6 +53,7 @@ router.route("/profile/:userId").get(getUser);
 router.route("/current-user").get(authenticateUser, currentUser);
 router.route("/auth/logout").post(authenticateUser, logout);
 router.route("/update").put(authenticateUser, updateUser);
+router.route("/update-avatar").put(authenticateUser, multerUpload.single("avatar"), updateUserAvatar);
 router.route("/delete").delete(authenticateUser, deleteUser);
 router.route("/get-all-user-quotes").get(authenticateUser, getUserQuotes);
 router.route("/send-forgot-password-link").post(sendForgotPasswordLink);

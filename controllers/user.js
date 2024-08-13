@@ -4,17 +4,10 @@ import { transporter, generateToken } from "../utils/mailToken.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
-import cloudinary from "cloudinary";
 import bcrypt from "bcryptjs";
-import multer from "multer";
-import { Service } from "../models/service.js";
+import { uploadToCloudinary } from "../utils/cloudinaryConfig.js";
 import { Quote } from "../models/quote.js";
 
-cloudinary.v2.config(process.env.CLOUDINARY_URL);
-
-// Set up Multer storage configuration
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
@@ -41,32 +34,28 @@ export const signIn = async (req, res) => {
   }
 
   if (!user.verified) {
-    if (user.userType === "contractor") {
-      throw new UnauthenticatedError("Account is not approved yet.");
-    } else if (user.userType === "tenant") {
-      const linkVerificationtoken = user.createJWT();
-      const maildata = {
-        from: process.env.Email_User,
-        to: user.email,
-        subject: `${user.firstName}, reset your password`,
-        html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
-          user.id
-        }&token=${encodeURIComponent(
-          linkVerificationtoken
-        )}">link</a> to reset your password. The link expires in 10 mins.</p>`,
-      };
+    const linkVerificationtoken = user.createJWT();
+    const maildata = {
+      from: process.env.Email_User,
+      to: user.email,
+      subject: `${user.firstName}, reset your password`,
+      html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
+        user.id
+      }&token=${encodeURIComponent(
+        linkVerificationtoken
+      )}">link</a> to reset your password. The link expires in 10 mins.</p>`,
+    };
 
-      transporter.sendMail(maildata, (error, info) => {
-        if (error) {
-          console.log(error);
-          return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send password reset email" });
-        }
-        console.log(info);
-        return res.status(StatusCodes.OK).json({ message: "Check your email to reset your password" });
-      });
+    transporter.sendMail(maildata, (error, info) => {
+      if (error) {
+        console.log(error);
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send password reset email" });
+      }
+      console.log(info);
+      return res.status(StatusCodes.OK).json({ message: "Check your email to reset your password" });
+    });
 
-      throw new UnauthenticatedError("Account is not verified, kindly check your mail for password reset.");
-    }
+    throw new UnauthenticatedError("Account is not verified, kindly check your mail for password reset.");
   }
 
   if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
@@ -180,6 +169,31 @@ export const getUser = async (req, res) => {
   res.status(StatusCodes.OK).json({ user });
 };
 
+export const updateUserAvatar = async (req, res) => {
+  const { userId } = req.user;
+
+  let user = await User.findById(userId);
+  if (!user) {
+    throw new NotFoundError(`User does not exist`);
+  }
+
+  if (req.file) {
+    try {
+      const result = await uploadToCloudinary(req.file);
+      req.body.avatar = result.secure_url;
+    } catch (error) {
+      console.error("Error uploading avatar to Cloudinary:", error);
+      return res.status(400).json({ error: "Error uploading avatar to Cloudinary" });
+    }
+  }
+
+  user.avatar = req.body.avatar;
+
+  await user.save();
+
+  res.status(StatusCodes.OK).json({ user });
+};
+
 export const updateUser = async (req, res) => {
   const { userId } = req.user;
 
@@ -187,33 +201,6 @@ export const updateUser = async (req, res) => {
   let user = await User.findOne({ _id: userId });
   if (!user) {
     throw new NotFoundError("User does not exist");
-  }
-
-  // Handle avatar upload if file is present
-  if (req.body.avatar) {
-    try {
-      const result = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: "Topspot/User/Avatar/",
-            use_filename: true,
-          },
-          (error, result) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve(result);
-            }
-          }
-        );
-        req.avatar.stream.pipe(uploadStream);
-      });
-
-      req.body.avatar = result.url;
-    } catch (error) {
-      console.error(error);
-      throw new BadRequestError({ "error uploading image on cloudinary": error });
-    }
   }
 
   // Handle password change if currentPassword and newPassword are provided
@@ -326,27 +313,26 @@ export const chooseUserType = async (req, res) => {
 };
 
 export const getUserQuotes = async (req, res) => {
-    const {userId} = req.user; // Assuming user ID is available in req.user
+  const { userId } = req.user; // Assuming user ID is available in req.user
 
-    // Fetch all quotes related to the services of the logged-in user
-    const quotes = await Quote.find({})
-      .populate({
+  // Fetch all quotes related to the services of the logged-in user
+  const quotes = await Quote.find({})
+    .populate({
+      path: "user",
+      select: "firstName lastName email",
+    })
+    .populate({
+      path: "service",
+      match: { user: userId }, // Ensure the service belongs to the logged-in user
+      populate: {
         path: "user",
         select: "firstName lastName email",
-      })
-      .populate({
-        path: "service",
-        match: { user: userId }, // Ensure the service belongs to the logged-in user
-        populate: {
-          path: "user",
-          select: "firstName lastName email",
-        },
-      })
-      .exec();
+      },
+    })
+    .exec();
 
-    // Filter out quotes where the service is null (i.e., does not belong to the logged-in user)
-    const filteredQuotes = quotes.filter(quote => quote.service);
+  // Filter out quotes where the service is null (i.e., does not belong to the logged-in user)
+  const filteredQuotes = quotes.filter(quote => quote.service);
 
-    res.status(200).json(filteredQuotes);
- 
+  res.status(200).json(filteredQuotes);
 };

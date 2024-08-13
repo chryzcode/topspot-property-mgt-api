@@ -256,21 +256,37 @@ export const allUsers = async (req, res) => {
 };
 
 export const createTenantAccount = async (req, res) => {
-  const existingUser = await User.findOne({ email: req.body.email });
+  const { email, lodgeName, tenantRoomNumber } = req.body;
+
+  // Check if the required fields are present
+  if (!lodgeName || !tenantRoomNumber) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Lodge name and tenant room number are required" });
+  }
+
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
 
+  // Hash the default password
   const salt = await bcrypt.genSalt(10);
-  req.body.password = await bcrypt.hash("default_pword", salt);
+  const hashedPassword = await bcrypt.hash("default_pword", salt);
 
-  const user = await User.create({ ...req.body, userType: "tenant" });
+  // Create the user with the concatenated _id
+  const userId = `${lodgeName}${tenantRoomNumber}`;
+  const user = await User.create({
+    ...req.body,
+    _id: userId,
+    password: hashedPassword,
+    userType: "tenant",
+  });
 
   res.status(StatusCodes.CREATED).json({
     user,
     message: "Tenant account created successfully",
   });
 };
+
 
 export const getUserProfile = async (req, res) => {
   const { userId } = req.params;

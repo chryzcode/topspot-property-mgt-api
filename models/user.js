@@ -128,6 +128,13 @@ const userSchema = new mongoose.Schema(
     leasePayment: {
       type: String,
     },
+
+    tenantRoomNumber: {
+      type: String
+    },
+    lodgeName: {
+      type: String
+    }
   },
 
   {

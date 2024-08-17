@@ -189,7 +189,7 @@ export const updateUserAvatar = async (req, res) => {
 
   user.avatar = req.body.avatar;
 
-  await user.save();
+  
 
   res.status(StatusCodes.OK).json({ user });
 };
@@ -264,7 +264,7 @@ export const sendForgotPasswordLink = async (req, res) => {
   });
 };
 
-export const verifyForgotPasswordToken = async (req, res, next) => {
+export const verifyForgotPasswordToken = async (req, res) => {
   const { id, token } = req.query;
   const { password } = req.body;
 
@@ -287,11 +287,14 @@ export const verifyForgotPasswordToken = async (req, res, next) => {
       throw new NotFoundError("User not found");
     }
 
-    // Update the user's password
-    user.password = password;
-    await user.save();
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    return res.status(StatusCodes.OK).json({ user });
+    // Update the user's password
+    await User.updateOne({ _id: id }, { password: hashedPassword });
+
+    return res.status(StatusCodes.OK).json({ message: "Password updated successfully" });
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Token expired" });

@@ -130,11 +130,15 @@ const userSchema = new mongoose.Schema(
     },
 
     tenantRoomNumber: {
-      type: String
+      type: String,
     },
     lodgeName: {
-      type: String
-    }
+      type: String,
+    },
+    tenantId: {
+      type: String,
+      unique: true,
+    },
   },
 
   {
@@ -142,10 +146,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.pre("save", async function () {
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-});
 
 userSchema.methods.createJWT = function () {
   const token = jwt.sign(

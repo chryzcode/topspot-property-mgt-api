@@ -205,8 +205,12 @@ export const adminVerifyContractor = async (req, res) => {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only contractor accounts can be verified" });
   }
 
-  // Verify the contractor's account
-  contractor = await User.findOneAndUpdate({ _id: contractorId }, { contractorAccountStatus: "active" }, { new: true });
+  // Verify the contractor's account without updating the password field
+  contractor = await User.findOneAndUpdate(
+    { _id: contractorId },
+    { $set: { contractorAccountStatus: "active" } },
+    { new: true }
+  );
 
   // Respond with success message
   return res.status(StatusCodes.OK).json({ success: "Contractor account verified successfully", contractor });
@@ -272,11 +276,17 @@ export const createTenantAccount = async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash("default_pword", salt);
 
-  // Create the user with the concatenated _id
-  const userId = `${lodgeName}${tenantRoomNumber}`;
+  // Sanitize lodgeName and tenantRoomNumber to remove spaces
+  const sanitizedLodgeName = lodgeName.replace(/\s+/g, "");
+  const sanitizedTenantRoomNumber = tenantRoomNumber.replace(/\s+/g, "");
+
+  // Create the tenantId with the concatenated lodgeName and tenantRoomNumber
+  const tenantId = `${sanitizedLodgeName}${sanitizedTenantRoomNumber}`;
+
+  // Create the user
   const user = await User.create({
     ...req.body,
-    _id: userId,
+    tenantId,
     password: hashedPassword,
     userType: "tenant",
   });

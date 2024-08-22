@@ -167,12 +167,15 @@ export const contractorCreateQuote = async (req, res) => {
     throw new BadRequestError("Please provide a valid time in HH:mm format");
   }
 
+  // Increase the estimated amount by 30 percent
+  const increasedEstimatedCost = (parseFloat(estimatedCost) * 1.3).toFixed(2);
+
   // Create a new quote with updated information
   const newQuote = await Quote.create({
     user: userId,
     service: service._id,
     description,
-    estimatedCost,
+    estimatedCost: increasedEstimatedCost,
     availableFromDate,
     availableToDate,
     availableFromTime,
@@ -180,4 +183,32 @@ export const contractorCreateQuote = async (req, res) => {
   });
 
   res.status(StatusCodes.CREATED).json({ success: "Counter offer quote created successfully", quote: newQuote });
+};
+
+export const getCompletedServicesTotal = async (req, res) => {
+  const { userId } = req.user;
+
+  // Find all completed services for the current contractor
+  const completedServices = await Service.aggregate([
+    {
+      $match: {
+        contractor: userId,
+        status: "completed",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: "$amount" },
+      },
+    },
+  ]);
+
+  // Check if there are completed services
+  const totalAmount = completedServices.length > 0 ? completedServices[0].totalAmount : 0;
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    totalAmount,
+  });
 };

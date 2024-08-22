@@ -37,7 +37,7 @@ const serviceSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: ["usd"],
+      enum: ["php"],
     },
     amount: {
       type: Number,

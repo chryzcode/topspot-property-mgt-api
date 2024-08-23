@@ -138,6 +138,7 @@ const userSchema = new mongoose.Schema(
     tenantId: {
       type: String,
       unique: true,
+      required: false,
     },
   },
 

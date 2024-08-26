@@ -5,8 +5,6 @@ import mongoose from "mongoose";
 
 const allowedCategories = ["plumbing", "painting", "furniture assembly", "electrical work", "room cleaning", "other"];
 
-
-
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -137,8 +135,6 @@ const userSchema = new mongoose.Schema(
     },
     tenantId: {
       type: String,
-      unique: true,
-      required: false,
     },
   },
 
@@ -146,7 +142,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
 
 userSchema.methods.createJWT = function () {
   const token = jwt.sign(
@@ -173,6 +168,5 @@ userSchema.set("toJSON", {
 });
 
 const User = mongoose.model("User", userSchema);
-
 
 export { User, allowedCategories };

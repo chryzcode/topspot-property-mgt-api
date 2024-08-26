@@ -8,7 +8,6 @@ import bcrypt from "bcryptjs";
 import { uploadToCloudinary } from "../utils/cloudinaryConfig.js";
 import { Quote } from "../models/quote.js";
 
-
 const uniqueID = uuidv4();
 const domain = process.env.DOMAIN || "http://localhost:8000";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -82,6 +81,10 @@ export const signUp = async (req, res) => {
     return res
       .status(StatusCodes.BAD_REQUEST)
       .json({ error: "You are not allowed to create a tenant account through sign-up" });
+  }
+
+  if (!req.body.tenantId) {
+    req.body.tenantId = null; // or generateUniqueTenantId();
   }
 
   const existingUser = await User.findOne({ email: req.body.email });
@@ -188,8 +191,6 @@ export const updateUserAvatar = async (req, res) => {
   }
 
   user.avatar = req.body.avatar;
-
-  
 
   res.status(StatusCodes.OK).json({ user });
 };

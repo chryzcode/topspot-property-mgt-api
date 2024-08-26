@@ -272,16 +272,24 @@ export const createTenantAccount = async (req, res) => {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
 
-  // Hash the default password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash("default_pword", salt);
-
   // Sanitize lodgeName and tenantRoomNumber to remove spaces
   const sanitizedLodgeName = lodgeName.replace(/\s+/g, "");
   const sanitizedTenantRoomNumber = tenantRoomNumber.replace(/\s+/g, "");
 
   // Create the tenantId with the concatenated lodgeName and tenantRoomNumber
   const tenantId = `${sanitizedLodgeName}${sanitizedTenantRoomNumber}`;
+
+  // Check if a user with the same tenantId already exists
+  const existingTenant = await User.findOne({ tenantId });
+  if (existingTenant) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ error: "Tenant ID already exists. Please choose another room or lodge." });
+  }
+
+  // Hash the default password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash("default_pword", salt);
 
   // Create the user
   const user = await User.create({
@@ -296,6 +304,7 @@ export const createTenantAccount = async (req, res) => {
     message: "Tenant account created successfully",
   });
 };
+
 
 
 export const getUserProfile = async (req, res) => {

@@ -30,7 +30,7 @@ const port = process.env.PORT || 8000;
 
 app.set("trust proxy", 1);
 
-const whitelist = ["http://localhost:3000", "https://top-spot.vercel.app"];
+const whitelist = ["http://localhost:3000", "https://top-spot.vercel.app", "https://properties.topspothub.com"];
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || whitelist.includes(origin)) {

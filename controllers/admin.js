@@ -97,7 +97,7 @@ export const assignContractor = async (req, res) => {
   );
 
   const maildata = {
-    from: process.env.Email_User,
+    from: process.env.EMAIL_ADDRESS,
     to: contractor.email,
     subject: `${contractor.firstName}, a service has been assigned`,
     html: `<p>${contractor.firstName} a new service has been asigned to you as a contractor. Go check it out</p>`,
@@ -313,7 +313,7 @@ export const createTenantAccount = async (req, res) => {
   });
 
   const maildata = {
-    from: process.env.Email_User,
+    from: process.env.EMAIL_ADDRESS,
     to: user.email,
     subject: `${user.firstName},tenant account had been created`,
     html: `<p>${user.firstName} your tenent account has been created. You can go ahead to login</p>`,

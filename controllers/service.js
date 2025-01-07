@@ -5,6 +5,7 @@ import { Quote } from "../models/quote.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import cloudinary from "cloudinary";
 import multer from "multer";
+import { transporter } from "../utils/mailToken.js";
 
 cloudinary.v2.config(process.env.CLOUDINARY_URL);
 
@@ -127,7 +128,6 @@ export const createService = async (req, res) => {
   // Create service in the database
   let service = await Service.create({ ...req.body });
 
-
   // Optionally, populate additional data from the created service and quote
   service = await Service.findOne({ _id: service._id }).populate("user", "fullName avatar userType _id");
 
@@ -200,6 +200,8 @@ export const approveQuoteByOwner = async (req, res) => {
     throw new UnauthenticatedError("You are not authorized to approve this quote");
   }
 
+  const contractor = await User.findOne({ _id: service.contractor });
+
   // Approve the quote
   const updatedQuote = await Quote.findByIdAndUpdate(
     quoteId,
@@ -238,7 +240,20 @@ export const approveQuoteByOwner = async (req, res) => {
     new: true,
   });
 
-  res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
+  const maildata = {
+    from: user.email,
+    to: [process.env.Email_User, contractor.email],
+    subject: `${user.firstName}, approved a quoute`,
+    html: `<p>${user.firstName} has approved a quote in ${service.name} service</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+
+    res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
+  });
 };
 
 export const ownerDisapproveQuoye = async (req, res) => {
@@ -266,6 +281,8 @@ export const ownerDisapproveQuoye = async (req, res) => {
     throw new NotFoundError("User does not exist");
   }
 
+  const contractor = await User.findOne({ _id: service.contractor });
+
   // Ensure the contractor is assigned to the service
   if (service.user.toString() !== userId.toString()) {
     throw new UnauthenticatedError("Only the owner of the service can disapprove to the quote");
@@ -279,7 +296,20 @@ export const ownerDisapproveQuoye = async (req, res) => {
   );
   quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "cancelled" });
 
-  res.status(StatusCodes.OK).json({ service, quote });
+  const maildata = {
+    from: user.email,
+    to: [process.env.Email_User, contractor.email],
+    subject: `${user.firstName}, disapproved a quoute`,
+    html: `<p>${user.firstName} has disapproved a quote in ${service.name} service</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+
+    res.status(StatusCodes.OK).json({ service, quote });
+  });
 };
 
 // export const ownerReplyQuote = async (req, res) => {

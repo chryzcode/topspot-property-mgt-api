@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Quote } from "../models/quote.js";
 import { User } from "../models/user.js";
+import { transporter } from "../utils/mailToken.js";
 
 export const contractorServices = async (req, res) => {
   const { userId } = req.user;
@@ -68,6 +69,8 @@ export const contractorApproveQuote = async (req, res) => {
     return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
   }
 
+  const serviceOwner = await User.findOne({ _id: service.user });
+
   // Check if the user is a contractor
   if (user.userType !== "contractor") {
     return res
@@ -111,11 +114,24 @@ export const contractorApproveQuote = async (req, res) => {
     { runValidators: true, new: true }
   );
 
-  // Respond with success message
-  return res.status(StatusCodes.OK).json({
-    success: "Quote accepted and service period updated",
-    updatedQuote,
-    updatedService,
+  const maildata = {
+    from: user.email,
+    to: [process.env.Email_User, serviceOwner.email],
+    subject: `${user.firstName}, has approved inspection  date`,
+    html: `<p>${user.firstName} has approved inspection  date for ${service.name}</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+
+    // Respond with success message
+    return res.status(StatusCodes.OK).json({
+      success: "Quote accepted and service period updated",
+      updatedQuote,
+      updatedService,
+    });
   });
 };
 

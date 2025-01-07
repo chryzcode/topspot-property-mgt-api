@@ -3,11 +3,7 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Payment } from "../models/payment.js";
-import { User } from "../models/user.js";
-import stripePackage from "stripe";
-
-const stripe = new stripePackage(process.env.STRIPE_SECRET_KEY);
-const DOMAIN = process.env.DOMAIN;
+import fetch from "node-fetch";
 
 export const cancelPayment = async (req, res) => {
   const { serviceId, userId } = req.params;
@@ -15,7 +11,7 @@ export const cancelPayment = async (req, res) => {
   if (!service) {
     throw new BadRequestError("Service does not exist");
   }
-  res.status(StatusCodes.OK).json({ success: "payment process cancelled" });
+  res.status(StatusCodes.OK).json({ success: "Payment process cancelled" });
 };
 
 export const successfulPayment = async (req, res) => {
@@ -38,7 +34,7 @@ export const successfulPayment = async (req, res) => {
       }
     ).populate("user", "fullName avatar userType _id");
 
-    var payment = await Payment.findOne({ user: userId, service: serviceId, paid: true });
+    let payment = await Payment.findOne({ user: userId, service: serviceId, paid: true });
     if (!payment) {
       payment = await Payment.create({
         user: userId,
@@ -56,42 +52,62 @@ export const successfulPayment = async (req, res) => {
 };
 
 export const makePayment = async (req, res) => {
-  const { userId } = req.user;
-  const user = await User.findOne({ _id: userId });
   const { serviceId } = req.params;
+  const { userId } = req.user; // Assuming authentication middleware attaches user to req
 
-  let service = await Service.findOne({ _id: serviceId });
-  if (!service) {
-    throw new NotFoundError(`Service not found`);
-  }
-  req.body.user = user.id;
-  req.body.amount = service.amount;
-  req.body.service = service.id;
-  await Payment.create({ ...req.body });
-  const successUrl = `${DOMAIN}/payment/${service.id}/success/${userId}`;
-  const cancelUrl = `${DOMAIN}/payment/${service.id}/cancel/${userId}`;
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"], // Payment method types accepted (e.g., card)
-      line_items: [
-        {
-          price_data: {
-            currency: service.currency,
-            product_data: {
-              name: `${service.name} service`, // Name of your product or service
+    // Fetch the service from the database
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+    // Create a Checkout session with PayMongo
+    const response = await fetch("https://api.paymongo.com/v1/checkout_sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ":").toString("base64")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            amount: service.amount * 100, // Use service.amount instead of service.price, and ensure it's in cents
+            currency: "PHP", // Currency for the service
+            description: `Payment for service ${serviceId}`,
+            metadata: {
+              user_id: userId,
+              service_id: serviceId,
             },
-            unit_amount: service.amount * 100, // Amount in cents
+
+            success_url: `${process.env.FRONTEND_URL}/payment-success/${userId}`,
+            cancel_url: `${process.env.FRONTEND_URL}/payment-failure/${userId}`,
+
+            line_items: [
+              {
+                amount: service.amount * 100, // Ensure this is in cents
+                currency: "PHP", // Currency for the service
+                name: service.name, // Name of the service
+                quantity: 1, // Number of items (1 in this case)
+              },
+            ],
+            payment_method_types: ["card"], // Define payment methods allowed
           },
-          quantity: 1, // Quantity of the product
         },
-      ],
-      mode: "payment",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      }),
     });
-    res.status(StatusCodes.OK).json({ success: session.url });
+
+    // Parse the response from PayMongo
+    const responseBody = await response.json();
+    // If the response is OK, return the checkout URL
+    if (response.ok) {
+      return res.status(200).json({ checkoutUrl: responseBody.data.attributes.checkout_url });
+    } else {
+      return res.status(response.status).json({
+        message: responseBody.errors?.[0]?.detail || "Unknown error from PayMongo",
+      });
+    }
   } catch (error) {
-    console.error("Error creating payment link:", error);
-    res.status(StatusCodes.BAD_REQUEST).json({ error: "payment link not created" });
+    console.error("Error during payment creation:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

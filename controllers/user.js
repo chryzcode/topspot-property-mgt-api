@@ -97,7 +97,7 @@ export const signUp = async (req, res) => {
 
   const user = await User.create({ ...req.body, addressLine1: req.body.addressLine1 || " " });
   const maildata = {
-    from: process.env.Email_User,
+    from: "info@mail.properties.topspothub.com",
     to: user.email,
     subject: `${user.firstName}, verify your account`,
     html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
@@ -109,6 +109,7 @@ export const signUp = async (req, res) => {
 
   transporter.sendMail(maildata, (error, info) => {
     if (error) {
+      console.log(error)
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
     }
     const token = user.createJWT();

@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import { Quote } from "../models/quote.js";
 import bcrypt from "bcryptjs";
+import { transporter } from "../utils/mailToken.js";
 
 export const getTenantsAndHouseOwners = async (req, res) => {
   const tenantsAndHouseOwners = await User.find({ userType: "houseOwner" || "tenant", verified: true }).sort({
@@ -90,32 +91,44 @@ export const assignContractor = async (req, res) => {
   }
 
   service = await Service.findOneAndUpdate(
-    { _id: serviceId},
+    { _id: serviceId },
     { contractor: contractor._id },
     { runValidators: true, new: true }
   );
 
-  res.status(StatusCodes.CREATED).json({ success: service });
+  const maildata = {
+    from: process.env.Email_User,
+    to: contractor.email,
+    subject: `${contractor.firstName}, a service has been assigned`,
+    html: `<p>${contractor.firstName} a new service has been asigned to you as a contractor. Go check it out</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+
+    res.status(StatusCodes.CREATED).json({ success: service });
+  });
 };
 
 export const adminGetAllQuotes = async (req, res) => {
-    // Fetch all quotes
-    const quotes = await Quote.find({})
-      .populate({
+  // Fetch all quotes
+  const quotes = await Quote.find({})
+    .populate({
+      path: "user",
+      select: "firstName lastName email",
+    })
+    .populate({
+      path: "service",
+      populate: {
         path: "user",
         select: "firstName lastName email",
-      })
-      .populate({
-        path: "service",
-        populate: {
-          path: "user",
-          select: "firstName lastName email",
-        },
-      })
-      .exec();
+      },
+    })
+    .exec();
 
-    res.status(200).json(quotes);
-
+  res.status(200).json(quotes);
 };
 // export const adminApproveQuote = async (req, res) => {
 //   const { quoteId } = req.params;
@@ -299,13 +312,24 @@ export const createTenantAccount = async (req, res) => {
     userType: "tenant",
   });
 
-  res.status(StatusCodes.CREATED).json({
-    user,
-    message: "Tenant account created successfully",
+  const maildata = {
+    from: process.env.Email_User,
+    to: user.email,
+    subject: `${user.firstName},tenant account had been created`,
+    html: `<p>${user.firstName} your tenent account has been created. You can go ahead to login</p>`,
+  };
+
+  transporter.sendMail(maildata, (error, info) => {
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+    }
+
+    res.status(StatusCodes.CREATED).json({
+      user,
+      message: "Tenant account created successfully",
+    });
   });
 };
-
-
 
 export const getUserProfile = async (req, res) => {
   const { userId } = req.params;

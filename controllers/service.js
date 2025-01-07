@@ -241,8 +241,8 @@ export const approveQuoteByOwner = async (req, res) => {
   });
 
   const maildata = {
-    from: user.email,
-    to: [process.env.Email_User, contractor.email],
+    from: process.env.EMAIL_ADDRESS,
+    to: [process.env.EMAIL_ADDRESS, contractor.email],
     subject: `${user.firstName}, approved a quoute`,
     html: `<p>${user.firstName} has approved a quote in ${service.name} service</p>`,
   };
@@ -297,8 +297,8 @@ export const ownerDisapproveQuoye = async (req, res) => {
   quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "cancelled" });
 
   const maildata = {
-    from: user.email,
-    to: [process.env.Email_User, contractor.email],
+    from: process.env.EMAIL_ADDRESS,
+    to: [process.env.EMAIL_ADDRESS, contractor.email],
     subject: `${user.firstName}, disapproved a quoute`,
     html: `<p>${user.firstName} has disapproved a quote in ${service.name} service</p>`,
   };

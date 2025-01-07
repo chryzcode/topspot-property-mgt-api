@@ -115,8 +115,8 @@ export const contractorApproveQuote = async (req, res) => {
   );
 
   const maildata = {
-    from: user.email,
-    to: [process.env.Email_User, serviceOwner.email],
+    from: process.env.EMAIL_ADDRESS,
+    to: [process.env.EMAIL_ADDRESS, serviceOwner.email],
     subject: `${user.firstName}, has approved inspection  date`,
     html: `<p>${user.firstName} has approved inspection  date for ${service.name}</p>`,
   };

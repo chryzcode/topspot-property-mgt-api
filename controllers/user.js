@@ -35,7 +35,7 @@ export const signIn = async (req, res) => {
   if (!user.verified) {
     const linkVerificationtoken = user.createJWT();
     const maildata = {
-      from: process.env.Email_User,
+      from: process.env.EMAIL_ADDRESS,
       to: user.email,
       subject: `${user.firstName}, reset your password`,
       html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
@@ -97,7 +97,7 @@ export const signUp = async (req, res) => {
 
   const user = await User.create({ ...req.body, addressLine1: req.body.addressLine1 || " " });
   const maildata = {
-    from: "info@mail.properties.topspothub.com",
+    from: process.env.EMAIL_ADDRESS,
     to: user.email,
     subject: `${user.firstName}, verify your account`,
     html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
@@ -248,7 +248,7 @@ export const sendForgotPasswordLink = async (req, res) => {
   const linkVerificationtoken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30m" });
 
   const maildata = {
-    from: process.env.Email_User,
+    from: process.env.EMAIL_ADDRESS,
     to: user.email,
     subject: `${user.firstName}, you forgot your password`,
     html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=create-password&id=${

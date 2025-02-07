@@ -76,26 +76,50 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  // Prevent creation of tenant accounts through sign-up
-  if (req.body.userType && req.body.userType === "tenant") {
+  const { userType, email, lodgeName, tenantRoomNumber } = req.body;
+
+  // Ensure tenants provide required details
+  if (userType === "tenant" && (!lodgeName || !tenantRoomNumber)) {
     return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ error: "You are not allowed to create a tenant account through sign-up" });
+      .json({ error: "Lodge name and tenant room number are required for tenant accounts." });
   }
 
-  if (!req.body.tenantId) {
-    req.body.tenantId = null; // or generateUniqueTenantId();
-  }
-
-  const existingUser = await User.findOne({ email: req.body.email });
+  // Ensure unique email
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
 
+  let tenantId = null;
+
+  if (userType === "tenant") {
+    // Generate unique tenantId
+    const sanitizedLodgeName = lodgeName.replace(/\s+/g, "");
+    const sanitizedTenantRoomNumber = tenantRoomNumber.replace(/\s+/g, "");
+    tenantId = `${sanitizedLodgeName}${sanitizedTenantRoomNumber}`;
+
+    // Ensure tenantId is unique
+    const existingTenant = await User.findOne({ tenantId });
+    if (existingTenant) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ error: "Tenant ID already exists. Choose another room or lodge." });
+    }
+  }
+
+  // Hash password
   const salt = await bcrypt.genSalt(10);
   req.body.password = await bcrypt.hash(req.body.password, salt);
 
-  const user = await User.create({ ...req.body, addressLine1: req.body.addressLine1 || " " });
+  // Create the user
+  const user = await User.create({
+    ...req.body,
+    tenantId,
+    addressLine1: req.body.addressLine1 || " ",
+  });
+
+  // Send verification email
   const maildata = {
     from: process.env.EMAIL_ADDRESS,
     to: user.email,
@@ -109,7 +133,6 @@ export const signUp = async (req, res) => {
 
   transporter.sendMail(maildata, (error, info) => {
     if (error) {
-      console.log(error)
       return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
     }
     const token = user.createJWT();
@@ -120,6 +143,7 @@ export const signUp = async (req, res) => {
     });
   });
 };
+
 
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId

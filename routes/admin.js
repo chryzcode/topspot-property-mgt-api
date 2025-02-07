@@ -35,5 +35,5 @@ router.route("/delete-contractor/:contractorId").delete(authenticateUser, admin,
 router.route("/all-users").get(authenticateUser, admin, allUsers);
 router.route("/create-tenant").post(authenticateUser, admin, createTenantAccount);
 router.route("/profile/:userId").get(authenticateUser, admin, getUserProfile);
-
+router.route("/verify-tenant/:tenantId").post(authenticateUser, admin, adminVerifyTenant);
 export default router;

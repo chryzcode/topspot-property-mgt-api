@@ -105,6 +105,12 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    
+    adminVerified: {
+      type: Boolean,
+      default: false,
+    },
+
     contractorAccountStatus: {
       type: String,
       enum: ["pending", "active", "disabled"],

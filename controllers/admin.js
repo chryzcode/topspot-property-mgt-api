@@ -192,6 +192,38 @@ export const adminGetAllQuotes = async (req, res) => {
 //   return res.status(StatusCodes.OK).json({ success: "Quote accepted", updatedQuote, updatedService });
 // };
 
+export const adminVerifyTenant = async (req, res) => {
+  const { tenantId } = req.params;
+  const { userId } = req.user;
+
+  // Fetch the user and contractor details
+  const user = await User.findById(userId);
+  let tenant = await User.findById(tenantId);
+
+  // Validate existence of user and contractor
+  if (!user) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+  }
+  if (!tenant) {
+    return res.status(StatusCodes.NOT_FOUND).json({ error: "Tenant not found" });
+  }
+
+  // Check if the user is an admin
+  if (user.userType !== "admin") {
+    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify contractor accounts" });
+  }
+
+  if (tenant.userType !== "houseOwner" || "tenant") {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only contractor accounts can be verified" });
+  }
+
+  // Verify the contractor's account without updating the password field
+  tenant = await User.findOneAndUpdate({ _id: tenantId }, { $set: { adminVerified: true } }, { new: true });
+
+  // Respond with success message
+  return res.status(StatusCodes.OK).json({ success: "Tenant account verified successfully", tenant });
+};
+
 export const adminVerifyContractor = async (req, res) => {
   const { contractorId } = req.params;
   const { userId } = req.user;

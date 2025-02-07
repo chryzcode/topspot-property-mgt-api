@@ -14,6 +14,7 @@ import {
   allUsers,
   createTenantAccount,
   getUserProfile,
+  adminVerifyTenant,
 } from "../controllers/admin.js";
 
 import authenticateUser from "../middleware/authentication.js";

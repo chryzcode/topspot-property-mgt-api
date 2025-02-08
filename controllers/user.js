@@ -33,6 +33,14 @@ export const signIn = async (req, res) => {
       throw new UnauthenticatedError("Invalid password");
     }
 
+    if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
+      throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
+    }
+
+    if (user.adminVerified === false && (user.userType !== "tenant" || user.userType !== "homeowner")) {
+      throw new UnauthenticatedError("Your account is not verified. Please contact support.");
+    }
+
     if (user.verified === false) {
       const verificationToken = user.createJWT();
       const verificationLink = `${FRONTEND_URL}/register?stage=verify&id=${user.id}&token=${encodeURIComponent(
@@ -53,14 +61,7 @@ export const signIn = async (req, res) => {
       }
     }
 
-    if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
-      throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
-    }
-
-
-    if (user.adminVerified === false && (user.userType !== "tenant" || user.userType !== "homeowner")) {
-      throw new UnauthenticatedError("Your account is not verified. Please contact support.");
-    }
+    
 
     const token = user.createJWT();
     await User.findByIdAndUpdate(user._id, { token });

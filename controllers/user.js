@@ -37,7 +37,7 @@ export const signIn = async (req, res) => {
       throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
     }
 
-    if (user.adminVerified === false && (user.userType !== "tenant" || user.userType !== "homeowner")) {
+    if (user.userType === "tenant" || user.userType === "homeowner" && user.adminVerified === false) {
       throw new UnauthenticatedError("Your account is not verified. Please contact support.");
     }
 
@@ -59,14 +59,13 @@ export const signIn = async (req, res) => {
       } catch (error) {
         return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
       }
-    }
-
-    
+    }else {
 
     const token = user.createJWT();
     await User.findByIdAndUpdate(user._id, { token });
 
     res.status(StatusCodes.OK).json({ user, token });
+    }
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
   }

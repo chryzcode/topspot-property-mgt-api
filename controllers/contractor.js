@@ -115,20 +115,32 @@ export const contractorApproveQuote = async (req, res) => {
     { runValidators: true, new: true }
   );
 
-  const maildata = {
-    to: [process.env.EMAIL_ADDRESS, serviceOwner.email],
-    subject: `${user.firstName}, has approved inspection  date`,
-    html: `<p>${user.firstName} has approved inspection  date for ${service.name}</p>`,
-  };
+  try {
+    // Send email notification to the service owner and admin
+    await sendEmail(
+      process.env.EMAIL_ADDRESS,
+      `${user.firstName}, has approved inspection date`,
+      `<p>${user.firstName} has approved inspection date for ${service.name}</p>`
+    );
 
-  await sendEmail(maildata);
+    await sendEmail(
+      serviceOwner.email,
+      `${user.firstName}, has approved inspection date`,
+      `<p>${user.firstName} has approved inspection date for ${service.name}</p>`
+    );
+
     // Respond with success message
     return res.status(StatusCodes.OK).json({
       success: "Quote accepted and service period updated",
-    updatedQuote,
-    updatedService,
-  });
+      updatedQuote,
+      updatedService,
+    });
+  } catch (error) {
+    console.error("Error sending approval email:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Failed to send email" });
+  }
 };
+
 
 
 export const contractorCreateQuote = async (req, res) => {

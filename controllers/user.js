@@ -47,7 +47,7 @@ export const signIn = async (req, res) => {
 
       try {
         await sendEmail(mailData);
-        return res.status(StatusCodes.OK).json({ message: "Check your email to verify your account" });
+        return res.status(StatusCodes.OK).json({ message: "Check your email to verify your account", user });
       } catch (error) {
         return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
       }
@@ -57,10 +57,10 @@ export const signIn = async (req, res) => {
       throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
     }
 
-    if (user.userType !== "tenant" && user.userType !== "homeowner" && user.adminVerified === false) {
+
+    if (user.adminVerified === false && (user.userType !== "tenant" || user.userType !== "homeowner")) {
       throw new UnauthenticatedError("Your account is not verified. Please contact support.");
     }
-
 
     const token = user.createJWT();
     await User.findByIdAndUpdate(user._id, { token });
@@ -79,17 +79,13 @@ export const logout = async (req, res) => {
 };
 
 export const signUp = async (req, res) => {
-  const { userType, email, lodgeName, tenantRoomNumber } = req.body;
-
-  // Ensure tenants provide required details
-  if (userType === "tenant" && (!lodgeName || !tenantRoomNumber)) {
-    return res
-      .status(StatusCodes.BAD_REQUEST)
-      .json({ error: "Lodge name and tenant room number are required for tenant accounts." });
+  // Prevent creation of tenant accounts through sign-up
+ 
+  if (!req.body.tenantId) {
+    req.body.tenantId = null; // or generateUniqueTenantId();
   }
 
-  // Ensure unique email
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: req.body.email });
   if (existingUser) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
@@ -140,7 +136,7 @@ export const signUp = async (req, res) => {
     return res.status(StatusCodes.CREATED).json({
       user,
       token,
-      message: "Check your email for account verification",
+      message: "Check your email for account verification, admin will verify your account soon",
     });
   } catch (error) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });

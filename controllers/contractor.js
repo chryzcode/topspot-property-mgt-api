@@ -4,7 +4,8 @@ import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Quote } from "../models/quote.js";
 import { User } from "../models/user.js";
-import { transporter } from "../utils/mailToken.js";
+import { sendEmail } from "../utils/mailToken.js";
+
 
 export const contractorServices = async (req, res) => {
   const { userId } = req.user;
@@ -115,25 +116,20 @@ export const contractorApproveQuote = async (req, res) => {
   );
 
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: [process.env.EMAIL_ADDRESS, serviceOwner.email],
     subject: `${user.firstName}, has approved inspection  date`,
     html: `<p>${user.firstName} has approved inspection  date for ${service.name}</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
-
+  await sendEmail(maildata);
     // Respond with success message
     return res.status(StatusCodes.OK).json({
       success: "Quote accepted and service period updated",
-      updatedQuote,
-      updatedService,
-    });
+    updatedQuote,
+    updatedService,
   });
 };
+
 
 export const contractorCreateQuote = async (req, res) => {
   const { userId } = req.user;

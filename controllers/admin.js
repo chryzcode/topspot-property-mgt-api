@@ -4,7 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import { Quote } from "../models/quote.js";
 import bcrypt from "bcryptjs";
-import { transporter } from "../utils/mailToken.js";
+import { sendEmail } from "../utils/mailToken.js";
 
 export const getTenantsAndHouseOwners = async (req, res) => {
   const tenantsAndHouseOwners = await User.find({ userType: "houseOwner" || "tenant", verified: true }).sort({
@@ -97,19 +97,14 @@ export const assignContractor = async (req, res) => {
   );
 
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: contractor.email,
     subject: `${contractor.firstName}, a service has been assigned`,
     html: `<p>${contractor.firstName} a new service has been asigned to you as a contractor. Go check it out</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
+  await sendEmail(maildata);
 
-    res.status(StatusCodes.CREATED).json({ success: service });
-  });
+  res.status(StatusCodes.OK).json({ success: "Contractor assigned successfully", service });
 };
 
 export const adminGetAllQuotes = async (req, res) => {
@@ -345,21 +340,16 @@ export const createTenantAccount = async (req, res) => {
   });
 
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: user.email,
     subject: `${user.firstName},tenant account had been created`,
     html: `<p>${user.firstName} your tenent account has been created. You can go ahead to login</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
+  await sendEmail(maildata);
 
-    res.status(StatusCodes.CREATED).json({
-      user,
-      message: "Tenant account created successfully",
-    });
+  res.status(StatusCodes.CREATED).json({
+    user,
+    message: "Tenant account created successfully",
   });
 };
 

@@ -1,16 +1,36 @@
-import nodemailer from "nodemailer";
 import "dotenv/config";
 import jwt from "jsonwebtoken";
 
-export const transporter = nodemailer.createTransport({
-  host: "live.smtp.mailtrap.io",
-  port: 587, // or 465 for SSL, but 587 is generally used for TLS
-  auth: {
-    user: process.env.Email_User, // Your Mailtrap SMTP username
-    pass: process.env.Email_Password, // Your Mailtrap SMTP password
-  },
-  secure: false, // Set to true if using port 465
-});
+export const sendEmail = async (to, subject, html) => {
+  try {
+    const response = await fetch("https://send.api.mailtrap.io/api/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.MAILTRAP_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        from: {
+          email: process.env.EMAIL_ADDRESS, // Change this to your verified sender email
+          name: "TopSpot Property Management",
+        },
+        to: [{ email: to }],
+        subject,
+        text,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to send email: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Email sent successfully:", data);
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+};
 
 
 export const generateToken = uniqueID => {

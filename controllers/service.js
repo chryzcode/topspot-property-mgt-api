@@ -190,7 +190,6 @@ export const approveQuoteByOwner = async (req, res) => {
   if (!service) {
     throw new NotFoundError("Service does not exist");
   }
-
   if (!user) {
     throw new NotFoundError("User does not exist");
   }
@@ -240,18 +239,23 @@ export const approveQuoteByOwner = async (req, res) => {
     new: true,
   });
 
+  // Send email notification to the contractor and admin
   const maildata = {
     to: [process.env.EMAIL_ADDRESS, contractor.email],
-    subject: `${user.firstName}, approved a quoute`,
-    html: `<p>${user.firstName} has approved a quote in ${service.name} service</p>`,
+    subject: `${user.firstName} has approved a quote`,
+    html: `<p>${user.firstName} has approved a quote for the ${service.name} service</p>`,
   };
 
   await sendEmail(maildata);
 
-  res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
+  res.status(StatusCodes.OK).json({
+    success: "Quote approved and service updated",
+    service: updatedService,
+  });
 };
 
-export const ownerDisapproveQuoye = async (req, res) => {
+
+export const ownerDisapproveQuote = async (req, res) => {
   const { userId } = req.user;
   const { quoteId } = req.params;
 
@@ -260,47 +264,47 @@ export const ownerDisapproveQuoye = async (req, res) => {
   let quote = await Quote.findById(quoteId).populate("service");
   let service = await Service.findById(quote.service);
 
-  // Validate existence of user and quote
+  // Validate existence of user, quote, and service
   if (!user) {
     throw new NotFoundError("User not found");
   }
   if (!quote) {
     throw new NotFoundError("Quote not found");
   }
-
   if (!service) {
     throw new NotFoundError("Service not found");
   }
 
-  if (!user) {
-    throw new NotFoundError("User does not exist");
-  }
-
-  const contractor = await User.findOne({ _id: service.contractor });
-
   // Ensure the contractor is assigned to the service
   if (service.user.toString() !== userId.toString()) {
-    throw new UnauthenticatedError("Only the owner of the service can disapprove to the quote");
+    throw new UnauthenticatedError("Only the owner of the service can disapprove the quote");
   }
 
-  // Create a new quote with updated information
+  // Disapprove the quote and update the service status to cancelled
   service = await Service.findOneAndUpdate(
     { _id: quote.service },
     { contractor: null, status: "cancelled" },
     { new: true }
   );
+
   quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "cancelled" });
 
+  // Send email notification to the contractor and admin
   const maildata = {
-    to: [process.env.EMAIL_ADDRESS, contractor.email],
-    subject: `${user.firstName}, disapproved a quoute`,
-    html: `<p>${user.firstName} has disapproved a quote in ${service.name} service</p>`,
+    to: [process.env.EMAIL_ADDRESS, service.contractor.email],
+    subject: `${user.firstName} has disapproved a quote`,
+    html: `<p>${user.firstName} has disapproved a quote for the ${service.name} service</p>`,
   };
 
   await sendEmail(maildata);
 
-  res.status(StatusCodes.OK).json({ service, quote });
+  res.status(StatusCodes.OK).json({
+    success: "Quote disapproved and service updated",
+    service,
+    quote,
+  });
 };
+
 
 // export const ownerReplyQuote = async (req, res) => {
 //   const { userId } = req.user;

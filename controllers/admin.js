@@ -96,15 +96,19 @@ export const assignContractor = async (req, res) => {
     { runValidators: true, new: true }
   );
 
-  const maildata = {
-    to: contractor.email,
-    subject: `${contractor.firstName}, a service has been assigned`,
-    html: `<p>${contractor.firstName} a new service has been asigned to you as a contractor. Go check it out</p>`,
-  };
+  try {
+    // Send contractor assignment email
+    await sendEmail(
+      contractor.email,
+      `${contractor.firstName}, a service has been assigned`,
+      `<p>${contractor.firstName}, a new service has been assigned to you as a contractor. Go check it out!</p>`
+    );
 
-  await sendEmail(maildata);
-
-  res.status(StatusCodes.OK).json({ success: "Contractor assigned successfully", service });
+    res.status(StatusCodes.OK).json({ success: "Contractor assigned successfully", service });
+  } catch (error) {
+    console.error("Error sending contractor assignment email:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Failed to send email" });
+  }
 };
 
 export const adminGetAllQuotes = async (req, res) => {
@@ -191,33 +195,40 @@ export const adminVerifyTenant = async (req, res) => {
   const { tenantId } = req.params;
   const { userId } = req.user;
 
-  // Fetch the user and contractor details
-  const user = await User.findById(userId);
-  let tenant = await User.findById(tenantId);
+  try {
+    // Fetch the user and tenant details
+    const user = await User.findById(userId);
+    let tenant = await User.findById(tenantId);
 
-  // Validate existence of user and contractor
-  if (!user) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+    // Validate existence of user and tenant
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "User not found" });
+    }
+    if (!tenant) {
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Tenant not found" });
+    }
+
+    // Check if the user is an admin
+    if (user.userType !== "admin") {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify tenant accounts" });
+    }
+
+    // Check if the tenant userType is either "tenant" or "houseOwner"
+    if (tenant.userType !== "tenant" && tenant.userType !== "houseOwner") {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only tenant or houseOwner accounts can be verified" });
+    }
+
+    // Verify the tenant's account without updating the password field
+    tenant = await User.findOneAndUpdate({ _id: tenantId }, { $set: { adminVerified: true } }, { new: true });
+
+    // Respond with success message
+    return res.status(StatusCodes.OK).json({ success: "Tenant account verified successfully", tenant });
+  } catch (error) {
+    console.error(error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "An error occurred during verification" });
   }
-  if (!tenant) {
-    return res.status(StatusCodes.NOT_FOUND).json({ error: "Tenant not found" });
-  }
-
-  // Check if the user is an admin
-  if (user.userType !== "admin") {
-    return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Only admins can verify contractor accounts" });
-  }
-
-  if (tenant.userType !== "houseOwner" || "tenant") {
-    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Only contractor accounts can be verified" });
-  }
-
-  // Verify the contractor's account without updating the password field
-  tenant = await User.findOneAndUpdate({ _id: tenantId }, { $set: { adminVerified: true } }, { new: true });
-
-  // Respond with success message
-  return res.status(StatusCodes.OK).json({ success: "Tenant account verified successfully", tenant });
 };
+
 
 export const adminVerifyContractor = async (req, res) => {
   const { contractorId } = req.params;
@@ -339,18 +350,22 @@ export const createTenantAccount = async (req, res) => {
     userType: "tenant",
   });
 
-  const maildata = {
-    to: user.email,
-    subject: `${user.firstName},tenant account had been created`,
-    html: `<p>${user.firstName} your tenent account has been created. You can go ahead to login</p>`,
-  };
+  try {
+    // Send tenant account creation email
+    await sendEmail(
+      user.email,
+      `${user.firstName}, tenant account has been created`,
+      `<p>${user.firstName}, your tenant account has been created. You can now go ahead to login.</p>`
+    );
 
-  await sendEmail(maildata);
-
-  res.status(StatusCodes.CREATED).json({
-    user,
-    message: "Tenant account created successfully",
-  });
+    res.status(StatusCodes.CREATED).json({
+      user,
+      message: "Tenant account created successfully",
+    });
+  } catch (error) {
+    console.error("Error sending tenant account creation email:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Failed to send email" });
+  }
 };
 
 export const getUserProfile = async (req, res) => {

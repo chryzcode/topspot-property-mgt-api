@@ -33,15 +33,8 @@ export const signIn = async (req, res) => {
       throw new UnauthenticatedError("Invalid password");
     }
 
-    if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
-      throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
-    }
-
-    if (user.userType === "tenant" || user.userType === "homeowner" && user.adminVerified === false) {
-      throw new UnauthenticatedError("Your account is not verified. Please contact support.");
-    }
-
-    if (user.verified === false) {
+    // Ensure the user is verified before allowing login
+    if (!user.verified) {
       const verificationToken = user.createJWT();
       const verificationLink = `${FRONTEND_URL}/register?stage=verify&id=${user.id}&token=${encodeURIComponent(
         verificationToken
@@ -54,20 +47,43 @@ export const signIn = async (req, res) => {
       };
 
       try {
-        await sendEmail(mailData);
-        return res.status(StatusCodes.OK).json({ message: "Check your email to verify your account", user });
-      } catch (error) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-      }
-    }else {
+        await sendEmail(
+          user.email,
+          `${user.firstName}, verify your account`,
+          `<p>Please use the following <a href="${verificationLink}">link</a> to verify your account. The link expires in 10 minutes.</p>`
+        );
 
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+          error: "Your account is not verified. A new verification link has been sent to your email.",
+        });
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+          error: "Failed to send verification email. Please try again later.",
+        });
+      }
+    }
+
+    // Ensure contractor accounts are active before login
+    if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        error: "Your contractor account is not active. Please contact support.",
+      });
+    }
+
+    // Ensure tenants and homeowners are admin-verified before login
+    if ((user.userType === "tenant" || user.userType === "homeowner") && !user.adminVerified) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        error: "Your account is not verified by the admin. Please contact support.",
+      });
+    }
+
+    // Generate token and update user record
     const token = user.createJWT();
     await User.findByIdAndUpdate(user._id, { token });
 
-    res.status(StatusCodes.OK).json({ user, token });
-    }
+    return res.status(StatusCodes.OK).json({ user, token });
   } catch (error) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
   }
 };
 
@@ -80,21 +96,23 @@ export const logout = async (req, res) => {
 
 export const signUp = async (req, res) => {
   // Prevent creation of tenant accounts through sign-up
- 
-  if (!req.body.tenantId) {
-    req.body.tenantId = null; // or generateUniqueTenantId();
-  }
 
-  const existingUser = await User.findOne({ email: req.body.email });
+  const { email, userType, lodgeName, tenantRoomNumber } = req.body;
+
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "User with this email already exists" });
   }
 
-  let tenantId = null;
+  let tenantId = null; // Ensure tenantId is properly scoped
 
   if (userType === "tenant") {
+    if (!lodgeName || !tenantRoomNumber) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Lodge name and room number are required for tenants" });
+    }
+
     // Generate unique tenantId
-    const sanitizedLodgeName = lodgeName.replace(/\s+/g, "");
+    const sanitizedLodgeName = lodgeName.replace(/\s+/g, "").toLowerCase();
     const sanitizedTenantRoomNumber = tenantRoomNumber.replace(/\s+/g, "");
     tenantId = `${sanitizedLodgeName}${sanitizedTenantRoomNumber}`;
 
@@ -114,24 +132,23 @@ export const signUp = async (req, res) => {
   // Create the user
   const user = await User.create({
     ...req.body,
-    tenantId,
+    tenantId, // Only assigned if user is a tenant
     addressLine1: req.body.addressLine1 || " ",
   });
 
-  // Send verification email
-  const maildata = {
-    to: user.email,
-    subject: `${user.firstName}, verify your account`,
-    html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
-      user.id
-    }&token=${encodeURIComponent(
-      linkVerificationtoken
-    )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
-  };
-
-  await sendEmail(maildata);
+  const linkVerificationToken = user.createJWT(); // Assuming this generates the token for email verification
 
   try {
+    // Send verification email
+    await sendEmail(
+      user.email,
+      `${user.firstName}, verify your account`,
+      `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
+        user.id
+      }&token=${encodeURIComponent(
+        linkVerificationToken
+      )}">link</a> to verify your account. The link expires in 10 mins.</p>`
+    );
     const token = user.createJWT();
     return res.status(StatusCodes.CREATED).json({
       user,
@@ -142,6 +159,7 @@ export const signUp = async (req, res) => {
     return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
   }
 };
+
 
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId
@@ -274,20 +292,23 @@ export const sendForgotPasswordLink = async (req, res) => {
       resetToken
     )}`;
 
-    const mailData = {
-      to: user.email,
-      subject: `${user.firstName}, reset your password`,
-      html: `<p>Please use the following <a href="${resetLink}">link</a> to reset your password. The link expires in 30 minutes.</p>`,
-    };
-
-    await sendEmail(mailData);
-
-    res.status(StatusCodes.OK).json({ success: "Check your email to change your password" });
+    try {
+      await sendEmail(
+        user.email,
+        `${user.firstName}, reset your password`,
+        `<p>Please use the following <a href="${resetLink}">link</a> to reset your password. The link expires in 30 minutes.</p>`
+      );
+      res.status(StatusCodes.OK).json({ success: "Check your email to change your password" });
+    } catch (error) {
+      console.error("Error sending password reset email:", error);
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Failed to send reset password email" });
+    }
   } catch (error) {
     console.error("Forgot password error:", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
   }
 };
+
 
 export const verifyForgotPasswordToken = async (req, res) => {
   const { id, token } = req.query;

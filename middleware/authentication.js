@@ -8,12 +8,17 @@ export default async (req, res, next) => {
     throw new UnauthenticatedError("Authentication invalid");
   }
   const token = authHeader.split(" ")[1];
-
+  let user;
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find the user with the provided token and verified status
-    const user = await User.findOne({ _id: payload.userId, token: token, verified: true, adminVerified: true });
+    if (payload.userType === "tenant" || payload.userType === "homeowner") {
+       user = await User.findOne({ _id: payload.userId, token: token, verified: true, adminVerified: true });
+    } else {
+       user = await User.findOne({ _id: payload.userId, token: token, verified: true });
+    }
+
     if (!user) {
       throw new UnauthenticatedError("Authentication invalid");
     }

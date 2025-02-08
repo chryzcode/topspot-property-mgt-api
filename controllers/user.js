@@ -1,6 +1,6 @@
 import { User } from "../models/user.js";
 import { StatusCodes } from "http-status-codes";
-import { transporter, generateToken } from "../utils/mailToken.js";
+import { sendEmail, generateToken } from "../utils/mailToken.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
@@ -15,57 +15,59 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const linkVerificationtoken = generateToken(uniqueID);
 
 export const signIn = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  if (!email || !password) {
-    throw new BadRequestError("Put in your email and password");
-  }
+    if (!email || !password) {
+      throw new BadRequestError("Put in your email and password");
+    }
 
-  const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    throw new UnauthenticatedError("User does not exist");
-  }
+    if (!user) {
+      throw new UnauthenticatedError("User does not exist");
+    }
 
-  const passwordMatch = await user.comparePassword(password);
-  if (!passwordMatch) {
-    throw new UnauthenticatedError("Invalid password");
-  }
+    const passwordMatch = await user.comparePassword(password);
+    if (!passwordMatch) {
+      throw new UnauthenticatedError("Invalid password");
+    }
 
-  if (!user.verified) {
-    const linkVerificationtoken = user.createJWT();
-    const maildata = {
-      from: process.env.EMAIL_ADDRESS,
-      to: user.email,
-      subject: `${user.firstName}, reset your password`,
-      html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
-        user.id
-      }&token=${encodeURIComponent(
-        linkVerificationtoken
-      )}">link</a> to reset your password. The link expires in 10 mins.</p>`,
-    };
+    if (!user.verified) {
+      const verificationToken = user.createJWT();
+      const verificationLink = `${FRONTEND_URL}/register?stage=verify&id=${user.id}&token=${encodeURIComponent(
+        verificationToken
+      )}`;
 
-    transporter.sendMail(maildata, (error, info) => {
-      if (error) {
-        console.log(error);
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send password reset email" });
+      const mailData = {
+        to: user.email,
+        subject: `${user.firstName}, verify your account`,
+        html: `<p>Please use the following <a href="${verificationLink}">link</a> to verify your account. The link expires in 10 minutes.</p>`,
+      };
+
+      try {
+        await sendEmail(mailData);
+        return res.status(StatusCodes.OK).json({ message: "Check your email to verify your account" });
+      } catch (error) {
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
       }
-      console.log(info);
-      return res.status(StatusCodes.OK).json({ message: "Check your email to reset your password" });
-    });
+    }
 
-    throw new UnauthenticatedError("Account is not verified, kindly check your mail for password reset.");
+    if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
+      throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
+    }
+
+    if (user.adminVerified === false) {
+      throw new UnauthenticatedError("Your account is not verified. Please contact support.");
+    }
+
+    const token = user.createJWT();
+    await User.findByIdAndUpdate(user._id, { token });
+
+    res.status(StatusCodes.OK).json({ user, token });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
   }
-
-  if (user.userType === "contractor" && user.contractorAccountStatus !== "active") {
-    throw new UnauthenticatedError("Your contractor account is not active. Please contact support.");
-  }
-
-  let token = user.createJWT();
-  await User.findOneAndUpdate({ _id: user._id }, { token: token });
-  token = user.token;
-
-  res.status(StatusCodes.OK).json({ user, token });
 };
 
 export const logout = async (req, res) => {
@@ -121,7 +123,6 @@ export const signUp = async (req, res) => {
 
   // Send verification email
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: user.email,
     subject: `${user.firstName}, verify your account`,
     html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=verify&id=${
@@ -131,19 +132,19 @@ export const signUp = async (req, res) => {
     )}">link</a> to verify your account. The link expires in 10 mins.</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
+  await sendEmail(maildata);
+
+  try {
     const token = user.createJWT();
     return res.status(StatusCodes.CREATED).json({
       user,
       token,
       message: "Check your email for account verification",
     });
-  });
+  } catch (error) {
+    return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
+  }
 };
-
 
 export const verifyAccount = async (req, res) => {
   const { token, id } = req.query; // Correctly extract token and userId
@@ -172,7 +173,7 @@ export const verifyAccount = async (req, res) => {
     }
 
     // Redirect to the desired route after successful verification
-    res.status(StatusCodes.OK).json({ success: "Account verified successfully" });
+    res.status(StatusCodes.OK).json({ success: "Account verified successfully, you have to wait for admin approval" });
   } catch (error) {
     console.error("Token verification failed:", error);
     res.status(StatusCodes.BAD_REQUEST).json({ error: error });
@@ -260,34 +261,35 @@ export const deleteUser = async (req, res) => {
 };
 
 export const sendForgotPasswordLink = async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    throw new BadRequestError("Email field is required");
-  }
-  const user = await User.findOne({ email: email });
-  if (!user) {
-    throw new NotFoundError("User does not exist");
-  }
-
-  const linkVerificationtoken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30m" });
-
-  const maildata = {
-    from: process.env.EMAIL_ADDRESS,
-    to: user.email,
-    subject: `${user.firstName}, you forgot your password`,
-    html: `<p>Please use the following <a href="${FRONTEND_URL}/register?stage=create-password&id=${
-      user.id
-    }&token=${encodeURIComponent(
-      linkVerificationtoken
-    )}">link</a> to reset your password. The link expires in 30 minutes.</p>`,
-  };
-
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      res.status(StatusCodes.BAD_REQUEST).send();
+  try {
+    const { email } = req.body;
+    if (!email) {
+      throw new BadRequestError("Email field is required");
     }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "30m" });
+    const resetLink = `${FRONTEND_URL}/register?stage=create-password&id=${user.id}&token=${encodeURIComponent(
+      resetToken
+    )}`;
+
+    const mailData = {
+      to: user.email,
+      subject: `${user.firstName}, reset your password`,
+      html: `<p>Please use the following <a href="${resetLink}">link</a> to reset your password. The link expires in 30 minutes.</p>`,
+    };
+
+    await sendEmail(mailData);
+
     res.status(StatusCodes.OK).json({ success: "Check your email to change your password" });
-  });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
+  }
 };
 
 export const verifyForgotPasswordToken = async (req, res) => {

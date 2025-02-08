@@ -5,7 +5,7 @@ import { Quote } from "../models/quote.js";
 import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/index.js";
 import cloudinary from "cloudinary";
 import multer from "multer";
-import { transporter } from "../utils/mailToken.js";
+import { sendEmail } from "../utils/mailToken.js";
 
 cloudinary.v2.config(process.env.CLOUDINARY_URL);
 
@@ -241,19 +241,14 @@ export const approveQuoteByOwner = async (req, res) => {
   });
 
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: [process.env.EMAIL_ADDRESS, contractor.email],
     subject: `${user.firstName}, approved a quoute`,
     html: `<p>${user.firstName} has approved a quote in ${service.name} service</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
+  await sendEmail(maildata);
 
-    res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
-  });
+  res.status(StatusCodes.OK).json({ success: "Quote approved and service updated", service: updatedService });
 };
 
 export const ownerDisapproveQuoye = async (req, res) => {
@@ -297,19 +292,14 @@ export const ownerDisapproveQuoye = async (req, res) => {
   quote = await Quote.findOneAndUpdate({ _id: quoteId }, { approve: "cancelled" });
 
   const maildata = {
-    from: process.env.EMAIL_ADDRESS,
     to: [process.env.EMAIL_ADDRESS, contractor.email],
     subject: `${user.firstName}, disapproved a quoute`,
     html: `<p>${user.firstName} has disapproved a quote in ${service.name} service</p>`,
   };
 
-  transporter.sendMail(maildata, (error, info) => {
-    if (error) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ error: "Failed to send verification email" });
-    }
+  await sendEmail(maildata);
 
-    res.status(StatusCodes.OK).json({ service, quote });
-  });
+  res.status(StatusCodes.OK).json({ service, quote });
 };
 
 // export const ownerReplyQuote = async (req, res) => {

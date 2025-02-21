@@ -200,9 +200,9 @@ export const approveQuoteByOwner = async (req, res) => {
     throw new UnauthenticatedError("You are not authorized to approve this quote");
   }
 
-  if (service.paid !== true) {
-    return await makePayment(req, res);
-  }
+  // if (service.paid !== true) {
+  //   return await makePayment(req, res);
+  // }
 
   const contractor = await User.findOne({ _id: service.contractor });
 

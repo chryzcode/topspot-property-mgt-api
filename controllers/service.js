@@ -6,6 +6,7 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 import cloudinary from "cloudinary";
 import multer from "multer";
 import { sendEmail } from "../utils/mailToken.js";
+import { makePayment } from "./payment.js";
 
 cloudinary.v2.config(process.env.CLOUDINARY_URL);
 
@@ -197,6 +198,10 @@ export const approveQuoteByOwner = async (req, res) => {
   // Check if the user is the owner of the service
   if (service.user.toString() !== userId.toString()) {
     throw new UnauthenticatedError("You are not authorized to approve this quote");
+  }
+
+  if (service.paid !== true) {
+    return await makePayment(req, res);
   }
 
   const contractor = await User.findOne({ _id: service.contractor });

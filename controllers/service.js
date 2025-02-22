@@ -176,88 +176,96 @@ export const completeService = async (req, res) => {
 };
 
 export const approveQuoteByOwner = async (req, res) => {
-  const { quoteId } = req.params;
-  const { userId } = req.user;
+  try {
+    const { quoteId } = req.params;
+    const { userId } = req.user;
 
-  // Fetch the user, quote, and service details
-  const user = await User.findById(userId);
-  const quote = await Quote.findById(quoteId);
-  const service = await Service.findById(quote.service);
+    const user = await User.findById(userId);
+    const quote = await Quote.findById(quoteId);
+    const service = quote ? await Service.findById(quote.service) : null;
 
-  // Validate existence of quote and service
-  if (!quote) {
-    throw new NotFoundError("Quote does not exist");
-  }
-  if (!service) {
-    throw new NotFoundError("Service does not exist");
-  }
-  if (!user) {
-    throw new NotFoundError("User does not exist");
-  }
 
-  // Check if the user is the owner of the service
-  if (service.user.toString() !== userId.toString()) {
-    throw new UnauthenticatedError("You are not authorized to approve this quote");
-  }
+    if (!user) throw new NotFoundError("User does not exist");
+    if (!quote) throw new NotFoundError("Quote does not exist");
+    if (!service) throw new NotFoundError("Service does not exist");
 
-  if (service.paid !== true) {
-    return await makePayment(req, res);
-  }
+    // 🔐 Check if the user is the owner of the service
+      if (service.user.toString() !== userId.toString()) {
+        throw new UnauthenticatedError("You are not authorized to approve this quote");
+      }
 
-  const contractor = await User.findOne({ _id: service.contractor });
+   
+      if (service.paid !== true) {
+        req.params.serviceId = service._id; 
+        return await makePayment(req, res);
+      }
+  
+    
+    const contractor = await User.findById(service.contractor);
 
-  // Approve the quote
-  const updatedQuote = await Quote.findByIdAndUpdate(
-    quoteId,
-    { approve: "approved" },
-    { runValidators: true, new: true }
-  );
 
-  // Prepare the update data for the service
-  const updateData = {
-    amount: quote.estimatedCost || service.amount,
-    description: quote.description || service.description,
-    status: "ongoing",
-  };
+    const updatedQuote = await Quote.findByIdAndUpdate(
+      quoteId,
+      { approve: "approved" },
+      { runValidators: true, new: true }
+    );
 
-  // Update the availability details if provided in the quote
-  if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
-  if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
-  if (quote.availableFromTime) {
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(quote.availableFromTime)) {
-      throw new BadRequestError("Please provide a valid available from time in HH:mm format");
+
+    const updateData = {
+      amount: quote.estimatedCost || service.amount,
+      description: quote.description || service.description,
+      status: "ongoing",
+    };
+
+    // ⏳ Update available dates and times
+    if (quote.availableFromDate) updateData.availableFromDate = quote.availableFromDate;
+    if (quote.availableToDate) updateData.availableToDate = quote.availableToDate;
+
+    // 🕒 Time validation function
+    const validateTime = time => /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+
+    if (quote.availableFromTime) {
+      if (!validateTime(quote.availableFromTime)) {
+        throw new BadRequestError("Invalid available from time format (HH:mm)");
+      }
+      updateData.availableFromTime = quote.availableFromTime;
     }
-    updateData.availableFromTime = quote.availableFromTime;
-  }
-  if (quote.availableToTime) {
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(quote.availableToTime)) {
-      throw new BadRequestError("Please provide a valid available to time in HH:mm format");
+
+    if (quote.availableToTime) {
+      if (!validateTime(quote.availableToTime)) {
+        throw new BadRequestError("Invalid available to time format (HH:mm)");
+      }
+      updateData.availableToTime = quote.availableToTime;
     }
-    updateData.availableToTime = quote.availableToTime;
+
+    // 🔄 Update service with approved quote details
+    const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
+      runValidators: true,
+      new: true,
+    });
+
+    // 📧 Send email notification to contractor and admin
+    const mailData = {
+      to: [process.env.EMAIL_ADDRESS, contractor.email],
+      subject: `${user.firstName} has approved a quote`,
+      html: `<p>${user.firstName} has approved a quote for the <strong>${service.name}</strong> service.</p>`,
+    };
+
+    await sendEmail(mailData);
+
+    // 🎉 Success response
+    res.status(StatusCodes.OK).json({
+      success: "Quote approved and service updated",
+      service: updatedService,
+    });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "An unexpected error occurred",
+    });
   }
-
-  // Update the service with the approved quote details
-  const updatedService = await Service.findByIdAndUpdate(quote.service, updateData, {
-    runValidators: true,
-    new: true,
-  });
-
-  // Send email notification to the contractor and admin
-  const maildata = {
-    to: [process.env.EMAIL_ADDRESS, contractor.email],
-    subject: `${user.firstName} has approved a quote`,
-    html: `<p>${user.firstName} has approved a quote for the ${service.name} service</p>`,
-  };
-
-  await sendEmail(maildata);
-
-  res.status(StatusCodes.OK).json({
-    success: "Quote approved and service updated",
-    service: updatedService,
-  });
 };
+
 
 
 export const ownerDisapproveQuote = async (req, res) => {

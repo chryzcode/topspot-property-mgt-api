@@ -61,6 +61,10 @@ export const makePayment = async (req, res) => {
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
+
+    if (service.paid) {
+      return res.status(400).json({ message: "Service has already been paid for" });
+    }
     // Create a Checkout session with PayMongo
     const response = await fetch("https://api.paymongo.com/v1/checkout_sessions", {
       method: "POST",

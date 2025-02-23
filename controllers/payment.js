@@ -3,6 +3,8 @@ import { BadRequestError, UnauthenticatedError, NotFoundError } from "../errors/
 import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Payment } from "../models/payment.js";
+import { Quote } from "../models/quote.js";
+import {approveQuoteByOwner} from "../controllers/service.js"
 import fetch from "node-fetch";
 
 export const cancelPayment = async (req, res) => {
@@ -15,16 +17,21 @@ export const cancelPayment = async (req, res) => {
 };
 
 export const successfulPayment = async (req, res) => {
-  const { serviceId, userId } = req.params;
+  try {
+    const { serviceId, userId } = req.params;
 
-  let service = await Service.findOne({ _id: serviceId });
-  if (!service) {
-    throw new NotFoundError(`Service not found`);
-  }
+    let service = await Service.findOne({ _id: serviceId });
+    if (!service) {
+      throw new NotFoundError(`Service not found`);
+    }
 
-  if (await Service.findOne({ _id: serviceId, paid: true })) {
-    res.status(StatusCodes.OK).send(`Service has been paid for already`);
-  } else {
+    // Check if the service has already been paid for
+    const alreadyPaid = await Service.findOne({ _id: serviceId, paid: true });
+    if (alreadyPaid) {
+      return res.status(StatusCodes.OK).send(`Service has been paid for already`);
+    }
+
+    // Mark the service as paid
     service = await Service.findOneAndUpdate(
       { _id: serviceId },
       { paid: true },
@@ -34,6 +41,7 @@ export const successfulPayment = async (req, res) => {
       }
     ).populate("user", "fullName avatar userType _id");
 
+    // Handle payment record creation
     let payment = await Payment.findOne({ user: userId, service: serviceId, paid: true });
     if (!payment) {
       payment = await Payment.create({
@@ -42,14 +50,28 @@ export const successfulPayment = async (req, res) => {
         paid: true,
       });
     }
+
+    // Populate user data in payment
     payment = await Payment.findOne({ user: userId, service: serviceId, paid: true }).populate(
       "user",
       "fullName avatar userType _id"
     );
 
+    // Get the latest quote and approve it
+    const latestQuote = await Quote.findOne({ service: serviceId }).sort({ createdAt: -1 });
+    if (latestQuote) {
+      req.params.quoteId = latestQuote._id;
+      await approveQuoteByOwner(req, res);
+      return; // Prevent sending multiple responses
+    }
+
+    // Send the final response if everything was successful
     res.status(StatusCodes.OK).json({ service, payment });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
   }
 };
+
 
 export const makePayment = async (req, res) => {
   const { serviceId } = req.params;

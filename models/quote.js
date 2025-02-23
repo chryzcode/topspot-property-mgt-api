@@ -18,9 +18,9 @@ const quoteSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: ["usd"],
-      default: "usd",
-      required: [true, "Please provide currency, ex. usd"],
+      enum: ["php"],
+      default: "php",
+      required: [true, "Please provide currency, ex. php"],
     },
     estimatedCost: {
       type: Number,

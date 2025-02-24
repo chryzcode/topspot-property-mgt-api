@@ -121,6 +121,8 @@ export const makePayment = async (req, res) => {
     if (service.paid) {
       return res.status(400).json({ message: "Service has already been paid for" });
     }
+    
+    const amountWithCharges = service.amount * 1.3
     // Create a Checkout session with PayMongo
     const response = await fetch("https://api.paymongo.com/v1/checkout_sessions", {
       method: "POST",
@@ -131,7 +133,7 @@ export const makePayment = async (req, res) => {
       body: JSON.stringify({
         data: {
           attributes: {
-            amount: service.amount * 100, // Use service.amount instead of service.price, and ensure it's in cents
+            amount: amountWithCharges * 100, // Use service.amount instead of service.price, and ensure it's in cents
             currency: "PHP", // Currency for the service
             description: `Payment for service ${serviceId}`,
             metadata: {

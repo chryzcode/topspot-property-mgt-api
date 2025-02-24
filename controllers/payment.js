@@ -4,12 +4,13 @@ import { StatusCodes } from "http-status-codes";
 import { Service } from "../models/service.js";
 import { Payment } from "../models/payment.js";
 import { Quote } from "../models/quote.js";
+import { User } from "../models/user.js";
 import {approveQuoteByOwner} from "../controllers/service.js"
 import fetch from "node-fetch";
 
 export const cancelPayment = async (req, res) => {
-  const { serviceId, userId } = req.params;
-  const service = await Service.findOne({ _id: serviceId, user: userId });
+  const { serviceId } = req.params;
+  const service = await Service.findOne({ _id: serviceId });
   if (!service) {
     throw new BadRequestError("Service does not exist");
   }
@@ -18,64 +19,97 @@ export const cancelPayment = async (req, res) => {
 
 export const successfulPayment = async (req, res) => {
   try {
-    const { serviceId, userId } = req.params;
+    const { serviceId } = req.params;
+    const { userId } = req.user;
 
+    // Validate service existence
     let service = await Service.findOne({ _id: serviceId });
     if (!service) {
-      throw new NotFoundError(`Service not found`);
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Service not found" });
+    }
+
+    // Validate user existence
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: "User not found" });
     }
 
     // Check if the service has already been paid for
-    const alreadyPaid = await Service.findOne({ _id: serviceId, paid: true });
-    if (alreadyPaid) {
-      return res.status(StatusCodes.OK).send(`Service has been paid for already`);
+    if (service.paid) {
+      return res.status(StatusCodes.OK).json({ message: "Service has already been paid for." });
     }
 
-    // Mark the service as paid
-    service = await Service.findOneAndUpdate(
-      { _id: serviceId },
-      { paid: true },
-      {
-        new: true,
-        runValidators: true,
-      }
-    ).populate("user", "fullName avatar userType _id");
-
-    // Handle payment record creation
-    let payment = await Payment.findOne({ user: userId, service: serviceId, paid: true });
+    // Retrieve the payment record
+    let payment = await Payment.findOne({ service: serviceId });
     if (!payment) {
-      payment = await Payment.create({
-        user: userId,
-        service: service.id,
-        paid: true,
+      return res.status(StatusCodes.NOT_FOUND).json({ error: "Payment record not found" });
+    }
+
+    // Fetch payment status from the Checkout Session
+    const paymentResponse = await fetch(
+      `https://api.paymongo.com/v1/checkout_sessions/${payment.paymentId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ":").toString("base64")}`,
+          accept: "application/json",
+        },
+      }
+    );
+
+    const paymentData = await paymentResponse.json();
+
+    console.log("PayMongo Checkout Session Response:", JSON.stringify(paymentData, null, 2));
+
+    // Validate payment status
+    const paymentStatus = paymentData.data.attributes.payments[0].attributes.status;
+    console.log("Payment Status:", paymentStatus);
+
+    if (paymentStatus !== "paid") {
+
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: "Payment not successful or incomplete.",
       });
     }
 
-    // Populate user data in payment
-    payment = await Payment.findOne({ user: userId, service: serviceId, paid: true }).populate(
-      "user",
-      "fullName avatar userType _id"
+    // Mark the service as paid
+    service = await Service.findByIdAndUpdate(
+      serviceId,
+      { paid: true },
+      { new: true, runValidators: true }
+    ).populate("user", "fullName avatar userType _id");
+
+    // Update the payment record
+    payment = await Payment.findByIdAndUpdate(
+      payment._id,
+      { paid: true },
+      { new: true, runValidators: true }
     );
 
-    // Get the latest quote and approve it
+    // Approve the latest quote if available
     const latestQuote = await Quote.findOne({ service: serviceId }).sort({ createdAt: -1 });
+
     if (latestQuote) {
       req.params.quoteId = latestQuote._id;
+      req.user = { userId: user._id };
       await approveQuoteByOwner(req, res);
-      return; // Prevent sending multiple responses
+      return; // Prevent multiple responses
     }
 
-    // Send the final response if everything was successful
-    res.status(StatusCodes.OK).json({ service, payment });
+    // Final success response
+    return res.status(StatusCodes.OK).json({ message: "Payment successful", service, payment });
   } catch (error) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
+    console.error("Checkout Session Error:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message || "Internal Server Error" });
   }
 };
 
 
+
+
 export const makePayment = async (req, res) => {
   const { serviceId } = req.params;
-  const { userId } = req.user; // Assuming authentication middleware attaches user to req
+  const {userId} = req.user;
 
   try {
     // Fetch the service from the database
@@ -105,8 +139,8 @@ export const makePayment = async (req, res) => {
               service_id: serviceId,
             },
 
-            success_url: `${process.env.FRONTEND_URL}/payment-success/${userId}`,
-            cancel_url: `${process.env.FRONTEND_URL}/payment-failure/${userId}`,
+            success_url: `${process.env.FRONTEND_URL}/pending-services/${serviceId}`,
+            cancel_url: `${process.env.FRONTEND_URL}/pending-services/${serviceId}`,
 
             line_items: [
               {
@@ -122,10 +156,22 @@ export const makePayment = async (req, res) => {
       }),
     });
 
+    const latestQuote = await Quote.findOne({ service: serviceId }).sort({ createdAt: -1 });
+
+    const paymentAmount = latestQuote?.estimatedCost || service.amount;
+
     // Parse the response from PayMongo
     const responseBody = await response.json();
     // If the response is OK, return the checkout URL
     if (response.ok) {
+      const payment = Payment.create({
+        user: userId,
+        service: service.id,
+        amount: paymentAmount,
+        paymentId: responseBody.data.id,
+        paymentMethod: "card",
+      });
+
       return res.status(200).json({ checkoutUrl: responseBody.data.attributes.checkout_url });
     } else {
       return res.status(response.status).json({

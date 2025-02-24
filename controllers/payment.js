@@ -139,8 +139,8 @@ export const makePayment = async (req, res) => {
               service_id: serviceId,
             },
 
-            success_url: `${process.env.FRONTEND_URL}/pending-services/${serviceId}`,
-            cancel_url: `${process.env.FRONTEND_URL}/pending-services/${serviceId}`,
+            success_url: `${process.env.FRONTEND_URL}`,
+            cancel_url: `${process.env.FRONTEND_URL}`,
 
             line_items: [
               {
